@@ -1,5 +1,7 @@
+mod camera;
 mod texture;
 
+use camera::Camera;
 use wgpu::{
     include_wgsl, util::DeviceExt, Backends, BindGroupEntry, BindGroupLayoutEntry, BlendState,
     Buffer, BufferUsages, ColorTargetState, ColorWrites, CommandEncoderDescriptor, Features,
@@ -141,6 +143,7 @@ struct State {
     num_indices: u32,
     diffuse_bind_group: wgpu::BindGroup,
     texture: texture::Texture,
+    camera: Camera,
 }
 impl State {
     async fn new(window: Window) -> Self {
@@ -301,6 +304,21 @@ impl State {
                 usage: BufferUsages::INDEX,
             },
         );
+        let camera = Camera {
+            eye: (
+                0.0, 1.0, 2.0,
+            )
+                .into(),
+            target: (
+                0.0, 0.0, 0.0,
+            )
+                .into(),
+            up: cgmath::Vector3::unit_y(),
+            aspect: config.width as f32 / config.height as f32,
+            fovy: 45.0,
+            znear: 0.1,
+            zfar: 100.0,
+        };
         Self {
             surface,
             device,
@@ -314,6 +332,7 @@ impl State {
             index_buffer,
             diffuse_bind_group,
             texture,
+            camera,
         }
     }
 
