@@ -3,12 +3,16 @@ mod texture;
 
 use camera::{Camera, CameraController, CameraUniform};
 
+use cgmath::{prelude::*, vec3, Matrix4, Quaternion, Vector3};
 use wgpu::{
-    include_wgsl, util::DeviceExt, Backends, BindGroup, BindGroupEntry, BindGroupLayoutEntry,
-    BlendState, Buffer, BufferUsages, ColorTargetState, ColorWrites, CommandEncoderDescriptor,
-    Features, FragmentState, Limits, MultisampleState, PipelineLayoutDescriptor, PrimitiveState,
-    PrimitiveTopology, RenderPipeline, RenderPipelineDescriptor, ShaderStages,
-    SurfaceConfiguration, TextureUsages, TextureViewDescriptor, VertexBufferLayout, VertexState,
+    include_wgsl,
+    util::{BufferInitDescriptor, DeviceExt},
+    Backends, BindGroup, BindGroupEntry, BindGroupLayoutEntry, BlendState, Buffer, BufferUsages,
+    ColorTargetState, ColorWrites, CommandEncoderDescriptor, DepthBiasState, DepthStencilState,
+    Features, FragmentState, Limits, MultisampleState, Operations, PipelineLayoutDescriptor,
+    PrimitiveState, PrimitiveTopology, RenderPipeline, RenderPipelineDescriptor, ShaderStages,
+    StencilState, SurfaceConfiguration, TextureUsages, TextureViewDescriptor, VertexBufferLayout,
+    VertexState,
 };
 use winit::{
     event::{ElementState, Event, VirtualKeyCode, WindowEvent},
@@ -138,6 +142,68 @@ const VERTICES: &[Vertex] = &[
 ];
 
 const INDICES: &[u16; 9] = &[0, 1, 4, 1, 2, 4, 2, 3, 4];
+const INSTANCES_PER_ROW: i32 = 10;
+const INSTANCE_DISPLACEMENT: Vector3<f32> = vec3(
+    INSTANCES_PER_ROW as f32 * 0.5,
+    0.,
+    INSTANCES_PER_ROW as f32 * 0.5,
+);
+struct Instance {
+    position: Vector3<f32>,
+    rotation: Quaternion<f32>,
+}
+impl Instance {
+    fn to_raw(&self) -> InstanceRaw {
+        InstanceRaw {
+            model: (Matrix4::from_translation(self.position) * Matrix4::from(self.rotation)).into(),
+        }
+    }
+}
+#[repr(C)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+struct InstanceRaw {
+    model: [[f32; 4]; 4],
+}
+impl InstanceRaw {
+    fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
+        use std::mem;
+        wgpu::VertexBufferLayout {
+            array_stride: mem::size_of::<InstanceRaw>() as wgpu::BufferAddress,
+            // We need to switch from using a step mode of Vertex to Instance
+            // This means that our shaders will only change to use the next
+            // instance when the shader starts processing a new instance
+            step_mode: wgpu::VertexStepMode::Instance,
+            attributes: &[
+                wgpu::VertexAttribute {
+                    offset: 0,
+                    // While our vertex shader only uses locations 0, and 1 now, in later tutorials we'll
+                    // be using 2, 3, and 4, for Vertex. We'll start at slot 5 not conflict with them later
+                    shader_location: 5,
+                    format: wgpu::VertexFormat::Float32x4,
+                },
+                // A mat4 takes up 4 vertex slots as it is technically 4 vec4s. We need to define a slot
+                // for each vec4. We'll have to reassemble the mat4 in
+                // the shader.
+                wgpu::VertexAttribute {
+                    offset: mem::size_of::<[f32; 4]>() as wgpu::BufferAddress,
+                    shader_location: 6,
+                    format: wgpu::VertexFormat::Float32x4,
+                },
+                wgpu::VertexAttribute {
+                    offset: mem::size_of::<[f32; 8]>() as wgpu::BufferAddress,
+                    shader_location: 7,
+                    format: wgpu::VertexFormat::Float32x4,
+                },
+                wgpu::VertexAttribute {
+                    offset: mem::size_of::<[f32; 12]>() as wgpu::BufferAddress,
+                    shader_location: 8,
+                    format: wgpu::VertexFormat::Float32x4,
+                },
+            ],
+        }
+    }
+}
+
 struct State {
     surface: wgpu::Surface,
     device: wgpu::Device,
@@ -156,6 +222,9 @@ struct State {
     camera_buffer: Buffer,
     camera_uniform: CameraUniform,
     camera_controller: CameraController,
+    instances: Vec<Instance>,
+    instance_buffer: Buffer,
+    depth_texture: texture::Texture,
 }
 impl State {
     async fn new(window: Window) -> Self {
@@ -308,6 +377,11 @@ impl State {
         let camera_controller = CameraController::new(
             0.01, 0.001,
         );
+        let depth_texture = texture::Texture::create_depth_texture(
+            &device,
+            &config,
+            Some("Depth Texture"),
+        );
         let render_pipeline_layout = device.create_pipeline_layout(
             &PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
@@ -322,7 +396,7 @@ impl State {
                 vertex: VertexState {
                     module: &shader,
                     entry_point: "vs_main",
-                    buffers: &[Vertex::desc()],
+                    buffers: &[Vertex::desc(), InstanceRaw::desc()],
                 },
                 primitive: PrimitiveState {
                     topology: PrimitiveTopology::TriangleList,
@@ -333,7 +407,15 @@ impl State {
                     polygon_mode: wgpu::PolygonMode::Fill,
                     conservative: false,
                 },
-                depth_stencil: None,
+                depth_stencil: Some(
+                    DepthStencilState {
+                        format: texture::Texture::DEPTH_FORMAT,
+                        depth_write_enabled: true,
+                        depth_compare: wgpu::CompareFunction::Less,
+                        stencil: StencilState::default(),
+                        bias: DepthBiasState::default(),
+                    },
+                ),
                 multisample: MultisampleState {
                     count: 1,
                     mask: !0,
@@ -369,6 +451,41 @@ impl State {
                 usage: BufferUsages::INDEX,
             },
         );
+
+        let instances = (0..INSTANCES_PER_ROW)
+            .flat_map(
+                |i| {
+                    (0..INSTANCES_PER_ROW).map(
+                        move |j| {
+                            let position = vec3(
+                                i as f32, 0., j as f32,
+                            ) - INSTANCE_DISPLACEMENT;
+
+                            let rotation = if position.is_zero() {
+                                cgmath::Quaternion::from_axis_angle(
+                                    cgmath::Vector3::unit_z(),
+                                    cgmath::Deg(0.0),
+                                )
+                            } else {
+                                cgmath::Quaternion::from_axis_angle(
+                                    position.normalize(),
+                                    cgmath::Deg(45.0),
+                                )
+                            };
+                            Instance { position, rotation }
+                        },
+                    )
+                },
+            )
+            .collect::<Vec<_>>();
+        let instance_data = instances.iter().map(Instance::to_raw).collect::<Vec<_>>();
+        let instance_buffer = device.create_buffer_init(
+            &BufferInitDescriptor {
+                label: Some("Instance Buffer"),
+                contents: bytemuck::cast_slice(&instance_data),
+                usage: BufferUsages::VERTEX,
+            },
+        );
         Self {
             surface,
             device,
@@ -387,6 +504,9 @@ impl State {
             camera_buffer,
             camera_bind_group,
             camera_controller,
+            instances,
+            instance_buffer,
+            depth_texture,
         }
     }
 
@@ -403,6 +523,11 @@ impl State {
                 &self.device,
                 &self.config,
             );
+            self.depth_texture = texture::Texture::create_depth_texture(
+                &self.device,
+                &self.config,
+                Some("Depth Texture"),
+            )
         }
     }
 
@@ -451,7 +576,18 @@ impl State {
                             },
                         },
                     )],
-                    depth_stencil_attachment: None,
+                    depth_stencil_attachment: Some(
+                        wgpu::RenderPassDepthStencilAttachment {
+                            view: &self.depth_texture.view,
+                            depth_ops: Some(
+                                Operations {
+                                    load: wgpu::LoadOp::Clear(1.0),
+                                    store: true,
+                                },
+                            ),
+                            stencil_ops: None,
+                        },
+                    ),
                 },
             );
             render_pass.set_pipeline(&self.render_pipeline);
@@ -469,6 +605,10 @@ impl State {
                 0,
                 self.vertex_buffer.slice(..),
             );
+            render_pass.set_vertex_buffer(
+                1,
+                self.instance_buffer.slice(..),
+            );
             render_pass.set_index_buffer(
                 self.index_buffer.slice(..),
                 wgpu::IndexFormat::Uint16,
@@ -476,7 +616,7 @@ impl State {
             render_pass.draw_indexed(
                 0..self.num_indices,
                 0,
-                0..1,
+                0..self.instances.len() as _,
             );
         }
         self.queue.submit(std::iter::once(encoder.finish()));
