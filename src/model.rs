@@ -1,6 +1,6 @@
 use wgpu::{util::DeviceExt, Buffer, BufferUsages, Device, VertexBufferLayout};
 
-const VERTICES: &[Vertex] = &[
+pub const _PENTAGON: &[Vertex] = &[
     Vertex {
         position: [-0.0868241, 0.0, 0.49240386],
         tex_coords: [0.4131759, 0.99240386],
@@ -22,8 +22,71 @@ const VERTICES: &[Vertex] = &[
         tex_coords: [0.9414737, 0.7347359],
     },
 ];
+pub const _PENTAGON_INDICES: &[u16] = &[0, 1, 4, 1, 2, 4, 2, 3, 4];
 
-const INDICES: &[u16; 9] = &[0, 1, 4, 1, 2, 4, 2, 3, 4];
+pub const CUBE: &[Vertex] = &[
+    //0
+    Vertex {
+        position: [0., 0., 0.],
+        tex_coords: [0., 0.],
+    },
+    //1
+    Vertex {
+        position: [0., 0., 1.],
+        tex_coords: [0., 1.],
+    },
+    //2
+    Vertex {
+        position: [0., 1., 0.],
+        tex_coords: [1., 0.],
+    },
+    //3
+    Vertex {
+        position: [0., 1., 1.],
+        tex_coords: [1., 1.],
+    },
+    //4
+    Vertex {
+        position: [1., 0., 0.],
+        tex_coords: [0., 1.],
+    },
+    //5
+    Vertex {
+        position: [1., 0., 1.],
+        tex_coords: [0., 0.],
+    },
+    //6
+    Vertex {
+        position: [1., 1., 0.],
+        tex_coords: [1., 1.],
+    },
+    //7
+    Vertex {
+        position: [1., 1., 1.],
+        tex_coords: [1., 0.],
+    },
+];
+#[rustfmt::skip]
+pub const CUBE_INDICES: &[u16] = &[
+    0, 1, 2, 
+    3, 2, 1, 
+    
+    6, 5, 4, 
+    5, 6, 7,
+    
+    5, 3, 1,
+    3, 5, 7,
+    
+    0, 2, 4,
+    6, 4, 2,
+    
+    4, 1, 0,
+    1, 4, 5,
+    
+    2, 3, 6,
+    7, 6, 3,
+    
+];
 
 pub struct Model {
     pub vertex_buffer: Buffer,
@@ -32,18 +95,18 @@ pub struct Model {
 }
 
 impl Model {
-    pub fn new(device: &Device) -> Self {
+    pub fn new(device: &Device, vertices: &[Vertex], indices: &[u16]) -> Self {
         let vertex_buffer = device.create_buffer_init(
             &wgpu::util::BufferInitDescriptor {
                 label: Some("Vertex Buffer"),
-                contents: bytemuck::cast_slice(VERTICES),
+                contents: bytemuck::cast_slice(vertices),
                 usage: BufferUsages::VERTEX,
             },
         );
         let index_buffer = device.create_buffer_init(
             &wgpu::util::BufferInitDescriptor {
                 label: Some("Index Buffer"),
-                contents: bytemuck::cast_slice(INDICES),
+                contents: bytemuck::cast_slice(indices),
                 usage: BufferUsages::INDEX,
             },
         );
@@ -51,7 +114,7 @@ impl Model {
         Self {
             vertex_buffer,
             index_buffer,
-            num_indices: INDICES.len() as u32,
+            num_indices: indices.len() as u32,
         }
     }
 }

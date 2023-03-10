@@ -75,6 +75,7 @@ impl RawInstance {
     pub fn new(instance: &Instance) -> Self {
         Self {
             model: (Matrix4::from_translation(instance.position)
+                * Matrix4::from_scale(0.5)
                 * Matrix4::from(instance.rotation))
             .into(),
         }

@@ -130,7 +130,11 @@ impl State {
         );
 
         //* MODEL
-        let model = Model::new(&env.device);
+        let model = Model::new(
+            &env.device,
+            model::CUBE,
+            model::CUBE_INDICES,
+        );
         let instances = instance::InstancesVec::new(&env.device);
 
         //* RENDERING
