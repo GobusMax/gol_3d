@@ -9,9 +9,10 @@ use environment::Environment;
 use model::{Model, Vertex};
 use wgpu::{
     include_wgsl, BindGroup, BlendState, ColorTargetState, ColorWrites, CommandEncoderDescriptor,
-    DepthBiasState, DepthStencilState, FragmentState, MultisampleState, Operations,
-    PipelineLayoutDescriptor, PrimitiveState, PrimitiveTopology, RenderPipeline,
-    RenderPipelineDescriptor, StencilState, TextureViewDescriptor, VertexState,
+    DepthBiasState, DepthStencilState, Device, FragmentState, MultisampleState, Operations,
+    PipelineLayout, PipelineLayoutDescriptor, PrimitiveState, PrimitiveTopology, RenderPipeline,
+    RenderPipelineDescriptor, ShaderModule, StencilState, SurfaceConfiguration,
+    TextureViewDescriptor, VertexState,
 };
 use winit::{
     event::{ElementState, Event, VirtualKeyCode, WindowEvent},
@@ -148,10 +149,35 @@ impl State {
                 push_constant_ranges: &[],
             },
         );
-        let render_pipeline = env.device.create_render_pipeline(
+        let render_pipeline = Self::generate_render_pipeline(
+            &env.device,
+            &env.config,
+            render_pipeline_layout,
+            shader,
+        );
+
+        Self {
+            env,
+            texture_bind_group,
+            _texture: texture,
+            camera,
+            model,
+            instances,
+            depth_texture,
+            render_pipeline,
+        }
+    }
+
+    fn generate_render_pipeline(
+        device: &Device,
+        config: &SurfaceConfiguration,
+        layout: PipelineLayout,
+        shader: ShaderModule,
+    ) -> RenderPipeline {
+        device.create_render_pipeline(
             &RenderPipelineDescriptor {
                 label: Some("Render Pipeline"),
-                layout: Some(&render_pipeline_layout),
+                layout: Some(&layout),
                 vertex: VertexState {
                     module: &shader,
                     entry_point: "vs_main",
@@ -186,7 +212,7 @@ impl State {
                         entry_point: "fs_main",
                         targets: &[Some(
                             ColorTargetState {
-                                format: env.config.format,
+                                format: config.format,
                                 blend: Some(BlendState::ALPHA_BLENDING),
                                 write_mask: ColorWrites::ALL,
                             },
@@ -195,18 +221,7 @@ impl State {
                 ),
                 multiview: None,
             },
-        );
-
-        Self {
-            env,
-            texture_bind_group,
-            _texture: texture,
-            camera,
-            model,
-            instances,
-            depth_texture,
-            render_pipeline,
-        }
+        )
     }
 
     pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
