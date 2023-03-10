@@ -2,18 +2,16 @@ mod camera;
 mod environment;
 mod texture;
 
-use camera::{CameraController, CameraEntity, CameraUniform};
-
+use camera::Camera;
 use cgmath::{prelude::*, vec3, Matrix4, Quaternion, Vector3};
 use environment::Environment;
 use wgpu::{
     include_wgsl,
     util::{BufferInitDescriptor, DeviceExt},
-    BindGroup, BindGroupEntry, BindGroupLayoutEntry, BlendState, Buffer, BufferUsages,
-    ColorTargetState, ColorWrites, CommandEncoderDescriptor, DepthBiasState, DepthStencilState,
-    FragmentState, MultisampleState, Operations, PipelineLayoutDescriptor, PrimitiveState,
-    PrimitiveTopology, RenderPipeline, RenderPipelineDescriptor, ShaderStages, StencilState,
-    TextureViewDescriptor, VertexBufferLayout, VertexState,
+    BindGroup, BlendState, Buffer, BufferUsages, ColorTargetState, ColorWrites,
+    CommandEncoderDescriptor, DepthBiasState, DepthStencilState, FragmentState, MultisampleState,
+    Operations, PipelineLayoutDescriptor, PrimitiveState, PrimitiveTopology, RenderPipeline,
+    RenderPipelineDescriptor, StencilState, TextureViewDescriptor, VertexBufferLayout, VertexState,
 };
 use winit::{
     event::{ElementState, Event, VirtualKeyCode, WindowEvent},
@@ -209,7 +207,7 @@ struct State {
     num_indices: u32,
     texture_bind_group: BindGroup,
     _texture: texture::Texture,
-    camera: camera::Camera,
+    camera: Camera,
     instances: Vec<Instance>,
     instance_buffer: Buffer,
     depth_texture: texture::Texture,
@@ -229,66 +227,13 @@ impl State {
                 "Texture",
             )
             .unwrap();
+
         //* CAMERA
-        let camera_entity = CameraEntity {
-            eye: (
-                0.0, 2.0, 0.0,
-            )
-                .into(),
-            dir: (
-                0.1, -1.0, 0.1,
-            )
-                .into(),
-            up: cgmath::Vector3::unit_y(),
-            aspect: env.config.width as f32 / env.config.height as f32,
-            fovy: 45.0,
-            znear: 0.1,
-            zfar: 100.0,
-        };
-        let mut camera_uniform = CameraUniform::new();
-        camera_uniform.update_view_proj(&camera_entity);
-        let camera_buffer = env.device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
-                label: Some("Camera Buffer"),
-                contents: bytemuck::cast_slice(&camera_uniform.view_proj),
-                usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
-            },
+        let (camera, camera_bind_group_layout) = Camera::create_camera(
+            &env.device,
+            &env.config,
         );
-        let camera_bind_group_layout = env.device.create_bind_group_layout(
-            &wgpu::BindGroupLayoutDescriptor {
-                label: Some("Camera Bind Group Layout"),
-                entries: &[BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: ShaderStages::VERTEX,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                }],
-            },
-        );
-        let camera_bind_group = env.device.create_bind_group(
-            &wgpu::BindGroupDescriptor {
-                label: Some("Camera Bind Groups"),
-                layout: &camera_bind_group_layout,
-                entries: &[BindGroupEntry {
-                    binding: 0,
-                    resource: camera_buffer.as_entire_binding(),
-                }],
-            },
-        );
-        let camera_controller = CameraController::new(
-            0.01, 0.001,
-        );
-        let camera = camera::Camera {
-            entity: camera_entity,
-            uniform: camera_uniform,
-            controller: camera_controller,
-            bind_group: camera_bind_group,
-            buffer: camera_buffer,
-        };
+
         //* RENDERING
         let depth_texture = texture::Texture::create_depth_texture(
             &env.device,

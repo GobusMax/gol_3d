@@ -1,5 +1,8 @@
 use cgmath::{perspective, prelude::*, Deg, Matrix3, Matrix4, Point3, Rad, Vector3};
-use wgpu::{BindGroup, Buffer};
+use wgpu::{
+    util::DeviceExt, BindGroup, BindGroupEntry, BindGroupLayout, BindGroupLayoutEntry, Buffer,
+    BufferUsages, Device, ShaderStages, SurfaceConfiguration,
+};
 use winit::event::*;
 
 pub const OPENGL_TO_WGPU_MATRIX: Matrix4<f32> = Matrix4::new(
@@ -15,6 +18,78 @@ pub struct Camera {
 }
 
 impl Camera {
+    pub fn create_camera(
+        device: &Device,
+        config: &SurfaceConfiguration,
+    ) -> (
+        Self,
+        BindGroupLayout,
+    ) {
+        let entity = CameraEntity {
+            eye: (
+                0.0, 2.0, 0.0,
+            )
+                .into(),
+            dir: (
+                0.1, -1.0, 0.1,
+            )
+                .into(),
+            up: cgmath::Vector3::unit_y(),
+            aspect: config.width as f32 / config.height as f32,
+            fovy: 45.0,
+            znear: 0.1,
+            zfar: 100.0,
+        };
+        let mut uniform = CameraUniform::new();
+        uniform.update_view_proj(&entity);
+        let buffer = device.create_buffer_init(
+            &wgpu::util::BufferInitDescriptor {
+                label: Some("Camera Buffer"),
+                contents: bytemuck::cast_slice(&uniform.view_proj),
+                usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+            },
+        );
+        let bind_group_layout = device.create_bind_group_layout(
+            &wgpu::BindGroupLayoutDescriptor {
+                label: Some("Camera Bind Group Layout"),
+                entries: &[BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: ShaderStages::VERTEX,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }],
+            },
+        );
+        let bind_group = device.create_bind_group(
+            &wgpu::BindGroupDescriptor {
+                label: Some("Camera Bind Groups"),
+                layout: &bind_group_layout,
+                entries: &[BindGroupEntry {
+                    binding: 0,
+                    resource: buffer.as_entire_binding(),
+                }],
+            },
+        );
+        let controller = CameraController::new(
+            0.01, 0.001,
+        );
+
+        (
+            Self {
+                entity,
+                uniform,
+                controller,
+                bind_group,
+                buffer,
+            },
+            bind_group_layout,
+        )
+    }
+
     pub fn update(&mut self) {
         self.controller.update_camera_entity(&mut self.entity);
         self.uniform.update_view_proj(&self.entity);
