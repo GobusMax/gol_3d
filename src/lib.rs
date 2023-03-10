@@ -2,7 +2,7 @@ mod camera;
 mod environment;
 mod texture;
 
-use camera::{Camera, CameraController, CameraUniform};
+use camera::{CameraController, CameraEntity, CameraUniform};
 
 use cgmath::{prelude::*, vec3, Matrix4, Quaternion, Vector3};
 use environment::Environment;
@@ -91,7 +91,7 @@ pub async fn run() {
                 device_id: _,
                 event,
             } => {
-                state.camera_controller.process_mouse(&event);
+                state.camera.controller.process_mouse(&event);
             }
             _ => {}
         },
@@ -209,11 +209,7 @@ struct State {
     num_indices: u32,
     texture_bind_group: BindGroup,
     _texture: texture::Texture,
-    camera: Camera,
-    camera_bind_group: BindGroup,
-    camera_buffer: Buffer,
-    camera_uniform: CameraUniform,
-    camera_controller: CameraController,
+    camera: camera::Camera,
     instances: Vec<Instance>,
     instance_buffer: Buffer,
     depth_texture: texture::Texture,
@@ -234,7 +230,7 @@ impl State {
             )
             .unwrap();
         //* CAMERA
-        let camera = Camera {
+        let camera_entity = CameraEntity {
             eye: (
                 0.0, 2.0, 0.0,
             )
@@ -250,7 +246,7 @@ impl State {
             zfar: 100.0,
         };
         let mut camera_uniform = CameraUniform::new();
-        camera_uniform.update_view_proj(&camera);
+        camera_uniform.update_view_proj(&camera_entity);
         let camera_buffer = env.device.create_buffer_init(
             &wgpu::util::BufferInitDescriptor {
                 label: Some("Camera Buffer"),
@@ -286,7 +282,13 @@ impl State {
         let camera_controller = CameraController::new(
             0.01, 0.001,
         );
-
+        let camera = camera::Camera {
+            entity: camera_entity,
+            uniform: camera_uniform,
+            controller: camera_controller,
+            bind_group: camera_bind_group,
+            buffer: camera_buffer,
+        };
         //* RENDERING
         let depth_texture = texture::Texture::create_depth_texture(
             &env.device,
@@ -410,10 +412,6 @@ impl State {
             index_buffer,
             _texture: texture,
             camera,
-            camera_uniform,
-            camera_buffer,
-            camera_bind_group,
-            camera_controller,
             instances,
             instance_buffer,
             depth_texture,
@@ -438,16 +436,15 @@ impl State {
     }
 
     fn input(&mut self, event: &WindowEvent) -> bool {
-        self.camera_controller.process_events(event)
+        self.camera.controller.process_events(event)
     }
 
     fn update(&mut self) {
-        self.camera_controller.update_camera(&mut self.camera);
-        self.camera_uniform.update_view_proj(&self.camera);
+        self.camera.update();
         self.env.queue.write_buffer(
-            &self.camera_buffer,
+            &self.camera.buffer,
             0,
-            bytemuck::cast_slice(&[self.camera_uniform.view_proj]),
+            bytemuck::cast_slice(&[self.camera.uniform.view_proj]),
         )
     }
 
@@ -504,7 +501,7 @@ impl State {
             );
             render_pass.set_bind_group(
                 1,
-                &self.camera_bind_group,
+                &self.camera.bind_group,
                 &[],
             );
             render_pass.set_vertex_buffer(

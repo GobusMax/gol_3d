@@ -1,4 +1,5 @@
 use cgmath::{perspective, prelude::*, Deg, Matrix3, Matrix4, Point3, Rad, Vector3};
+use wgpu::{BindGroup, Buffer};
 use winit::event::*;
 
 pub const OPENGL_TO_WGPU_MATRIX: Matrix4<f32> = Matrix4::new(
@@ -6,6 +7,20 @@ pub const OPENGL_TO_WGPU_MATRIX: Matrix4<f32> = Matrix4::new(
 );
 
 pub struct Camera {
+    pub entity: CameraEntity,
+    pub uniform: CameraUniform,
+    pub controller: CameraController,
+    pub bind_group: BindGroup,
+    pub buffer: Buffer,
+}
+
+impl Camera {
+    pub fn update(&mut self) {
+        self.controller.update_camera_entity(&mut self.entity);
+        self.uniform.update_view_proj(&self.entity);
+    }
+}
+pub struct CameraEntity {
     pub eye: Point3<f32>,
     pub dir: Vector3<f32>,
     pub up: Vector3<f32>,
@@ -15,7 +30,7 @@ pub struct Camera {
     pub zfar: f32,
 }
 
-impl Camera {
+impl CameraEntity {
     pub fn build_view_projection_matrix(&self) -> Matrix4<f32> {
         let view = Matrix4::look_to_rh(
             self.eye, self.dir, self.up,
@@ -39,8 +54,8 @@ impl CameraUniform {
             view_proj: cgmath::Matrix4::identity().into(),
         }
     }
-    pub fn update_view_proj(&mut self, camera: &Camera) {
-        self.view_proj = camera.build_view_projection_matrix().into();
+    pub fn update_view_proj(&mut self, camera_entity: &CameraEntity) {
+        self.view_proj = camera_entity.build_view_projection_matrix().into();
     }
 }
 pub struct CameraController {
@@ -117,39 +132,44 @@ impl CameraController {
             false
         }
     }
-    pub fn update_camera(&mut self, camera: &mut Camera) {
-        camera.dir = camera.dir.normalize();
+    pub fn update_camera_entity(&mut self, camera_entity: &mut CameraEntity) {
+        camera_entity.dir = camera_entity.dir.normalize();
         let yaw = Matrix3::from_angle_y(Rad(-self.delta.0) * self.sens);
-        camera.dir = yaw * camera.dir;
+        camera_entity.dir = yaw * camera_entity.dir;
 
         let pitch = Matrix3::from_axis_angle(
-            camera.dir.cross(camera.up).normalize(),
+            camera_entity.dir.cross(camera_entity.up).normalize(),
             -Rad(self.delta.1) * self.sens,
         );
         self.delta = (
             0., 0.,
         );
-        let new_dir = pitch * camera.dir;
-        if camera.dir.cross(camera.up).dot(new_dir.cross(camera.up)) >= 0. {
-            camera.dir = new_dir;
+        let new_dir = pitch * camera_entity.dir;
+        if camera_entity
+            .dir
+            .cross(camera_entity.up)
+            .dot(new_dir.cross(camera_entity.up))
+            >= 0.
+        {
+            camera_entity.dir = new_dir;
         } else {
-            camera.dir.y = camera.dir.y.signum();
+            camera_entity.dir.y = camera_entity.dir.y.signum();
         }
-        camera.dir = camera.dir.normalize();
+        camera_entity.dir = camera_entity.dir.normalize();
         if self.is_forward_pressed {
-            camera.eye += camera.dir * self.speed;
+            camera_entity.eye += camera_entity.dir * self.speed;
         }
         if self.is_backward_pressed {
-            camera.eye -= camera.dir * self.speed;
+            camera_entity.eye -= camera_entity.dir * self.speed;
         }
 
-        let right = camera.dir.cross(camera.up).normalize();
+        let right = camera_entity.dir.cross(camera_entity.up).normalize();
 
         if self.is_right_pressed {
-            camera.eye += right * self.speed;
+            camera_entity.eye += right * self.speed;
         }
         if self.is_left_pressed {
-            camera.eye += right * -self.speed;
+            camera_entity.eye += right * -self.speed;
         }
     }
 }
