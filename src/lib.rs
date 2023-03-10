@@ -122,23 +122,23 @@ const VERTICES: &[Vertex] = &[
     Vertex {
         position: [-0.0868241, 0.0, 0.49240386],
         tex_coords: [0.4131759, 0.99240386],
-    }, // A
+    },
     Vertex {
         position: [-0.49513406, 0.0, 0.06958647],
         tex_coords: [0.0048659444, 0.56958647],
-    }, // B
+    },
     Vertex {
         position: [-0.21918549, 0.0, -0.44939706],
         tex_coords: [0.28081453, 0.05060294],
-    }, // C
+    },
     Vertex {
         position: [0.35966998, 0.0, -0.3473291],
         tex_coords: [0.85967, 0.1526709],
-    }, // D
+    },
     Vertex {
         position: [0.44147372, 0.0, 0.2347359],
         tex_coords: [0.9414737, 0.7347359],
-    }, // E
+    },
 ];
 
 const INDICES: &[u16; 9] = &[0, 1, 4, 1, 2, 4, 2, 3, 4];
@@ -169,21 +169,13 @@ impl InstanceRaw {
         use std::mem;
         wgpu::VertexBufferLayout {
             array_stride: mem::size_of::<InstanceRaw>() as wgpu::BufferAddress,
-            // We need to switch from using a step mode of Vertex to Instance
-            // This means that our shaders will only change to use the next
-            // instance when the shader starts processing a new instance
             step_mode: wgpu::VertexStepMode::Instance,
             attributes: &[
                 wgpu::VertexAttribute {
                     offset: 0,
-                    // While our vertex shader only uses locations 0, and 1 now, in later tutorials we'll
-                    // be using 2, 3, and 4, for Vertex. We'll start at slot 5 not conflict with them later
                     shader_location: 5,
                     format: wgpu::VertexFormat::Float32x4,
                 },
-                // A mat4 takes up 4 vertex slots as it is technically 4 vec4s. We need to define a slot
-                // for each vec4. We'll have to reassemble the mat4 in
-                // the shader.
                 wgpu::VertexAttribute {
                     offset: mem::size_of::<[f32; 4]>() as wgpu::BufferAddress,
                     shader_location: 6,
@@ -228,6 +220,7 @@ struct State {
 }
 impl State {
     async fn new(window: Window) -> Self {
+        //* ENVIRONMENT
         let size = window.inner_size();
         let instance = wgpu::Instance::new(
             wgpu::InstanceDescriptor {
@@ -258,7 +251,24 @@ impl State {
             )
             .await
             .unwrap();
+        let surface_caps = surface.get_capabilities(&adapter);
+        let surface_format = surface_caps
+            .formats
+            .iter()
+            .copied()
+            .find(|f| f.describe().srgb)
+            .unwrap_or(surface_caps.formats[0]);
+        let config = SurfaceConfiguration {
+            usage: TextureUsages::RENDER_ATTACHMENT,
+            format: surface_format,
+            width: size.width,
+            height: size.height,
+            present_mode: surface_caps.present_modes[0],
+            alpha_mode: surface_caps.alpha_modes[0],
+            view_formats: vec![],
+        };
 
+        //* TEXTURE
         let diffuse_bytes = include_bytes!("happy-tree.png");
         let texture = texture::Texture::from_bytes(
             &device,
@@ -290,7 +300,7 @@ impl State {
                 ],
             },
         );
-        let diffuse_bind_group = device.create_bind_group(
+        let texture_bind_group = device.create_bind_group(
             &wgpu::BindGroupDescriptor {
                 label: Some("Diffuse Bind Group"),
                 layout: &texture_bind_group_layout,
@@ -307,24 +317,7 @@ impl State {
             },
         );
 
-        let surface_caps = surface.get_capabilities(&adapter);
-        let surface_format = surface_caps
-            .formats
-            .iter()
-            .copied()
-            .find(|f| f.describe().srgb)
-            .unwrap_or(surface_caps.formats[0]);
-        let config = SurfaceConfiguration {
-            usage: TextureUsages::RENDER_ATTACHMENT,
-            format: surface_format,
-            width: size.width,
-            height: size.height,
-            present_mode: surface_caps.present_modes[0],
-            alpha_mode: surface_caps.alpha_modes[0],
-            view_formats: vec![],
-        };
-        let shader = device.create_shader_module(include_wgsl!("shader.wgsl"));
-
+        //* CAMERA
         let camera = Camera {
             eye: (
                 0.0, 2.0, 0.0,
@@ -377,11 +370,14 @@ impl State {
         let camera_controller = CameraController::new(
             0.01, 0.001,
         );
+
+        //* RENDERING
         let depth_texture = texture::Texture::create_depth_texture(
             &device,
             &config,
             Some("Depth Texture"),
         );
+        let shader = device.create_shader_module(include_wgsl!("shader.wgsl"));
         let render_pipeline_layout = device.create_pipeline_layout(
             &PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
@@ -437,6 +433,8 @@ impl State {
                 multiview: None,
             },
         );
+
+        //* MODEL
         let vertex_buffer = device.create_buffer_init(
             &wgpu::util::BufferInitDescriptor {
                 label: Some("Vertex Buffer"),
@@ -497,7 +495,7 @@ impl State {
             vertex_buffer,
             num_indices: INDICES.len() as u32,
             index_buffer,
-            diffuse_bind_group,
+            diffuse_bind_group: texture_bind_group,
             texture,
             camera,
             camera_uniform,
