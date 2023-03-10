@@ -1,18 +1,19 @@
 mod camera;
+mod environment;
 mod texture;
 
 use camera::{Camera, CameraController, CameraUniform};
 
 use cgmath::{prelude::*, vec3, Matrix4, Quaternion, Vector3};
+use environment::Environment;
 use wgpu::{
     include_wgsl,
     util::{BufferInitDescriptor, DeviceExt},
-    Backends, BindGroup, BindGroupEntry, BindGroupLayoutEntry, BlendState, Buffer, BufferUsages,
+    BindGroup, BindGroupEntry, BindGroupLayoutEntry, BlendState, Buffer, BufferUsages,
     ColorTargetState, ColorWrites, CommandEncoderDescriptor, DepthBiasState, DepthStencilState,
-    Features, FragmentState, Limits, MultisampleState, Operations, PipelineLayoutDescriptor,
-    PrimitiveState, PrimitiveTopology, RenderPipeline, RenderPipelineDescriptor, ShaderStages,
-    StencilState, SurfaceConfiguration, TextureUsages, TextureViewDescriptor, VertexBufferLayout,
-    VertexState,
+    FragmentState, MultisampleState, Operations, PipelineLayoutDescriptor, PrimitiveState,
+    PrimitiveTopology, RenderPipeline, RenderPipelineDescriptor, ShaderStages, StencilState,
+    TextureViewDescriptor, VertexBufferLayout, VertexState,
 };
 use winit::{
     event::{ElementState, Event, VirtualKeyCode, WindowEvent},
@@ -86,7 +87,10 @@ pub async fn run() {
             Event::MainEventsCleared => {
                 state.env.window.request_redraw();
             }
-            Event::DeviceEvent { device_id, event } => {
+            Event::DeviceEvent {
+                device_id: _,
+                event,
+            } => {
                 state.camera_controller.process_mouse(&event);
             }
             _ => {}
@@ -198,7 +202,7 @@ impl InstanceRaw {
 }
 
 struct State {
-    env: Environment,
+    env: environment::Environment,
     render_pipeline: RenderPipeline,
     vertex_buffer: Buffer,
     index_buffer: Buffer,
@@ -525,74 +529,5 @@ impl State {
         output.present();
 
         Ok(())
-    }
-}
-
-struct Environment {
-    surface: wgpu::Surface,
-    device: wgpu::Device,
-    queue: wgpu::Queue,
-    config: wgpu::SurfaceConfiguration,
-    size: winit::dpi::PhysicalSize<u32>,
-    window: Window,
-}
-
-impl Environment {
-    async fn new(window: Window) -> Self {
-        let size = window.inner_size();
-        let instance = wgpu::Instance::new(
-            wgpu::InstanceDescriptor {
-                backends: Backends::VULKAN,
-                ..Default::default()
-            },
-        );
-        let surface = unsafe { instance.create_surface(&window).unwrap() };
-
-        let adapter = instance
-            .request_adapter(
-                &wgpu::RequestAdapterOptionsBase {
-                    power_preference: wgpu::PowerPreference::HighPerformance,
-                    force_fallback_adapter: false,
-                    compatible_surface: Some(&surface),
-                },
-            )
-            .await
-            .unwrap();
-        let (device, queue) = adapter
-            .request_device(
-                &wgpu::DeviceDescriptor {
-                    label: None,
-                    features: Features::empty(),
-                    limits: Limits::default(),
-                },
-                None,
-            )
-            .await
-            .unwrap();
-        let surface_caps = surface.get_capabilities(&adapter);
-        let surface_format = surface_caps
-            .formats
-            .iter()
-            .copied()
-            .find(|f| f.describe().srgb)
-            .unwrap_or(surface_caps.formats[0]);
-        let config = SurfaceConfiguration {
-            usage: TextureUsages::RENDER_ATTACHMENT,
-            format: surface_format,
-            width: size.width,
-            height: size.height,
-            present_mode: surface_caps.present_modes[0],
-            alpha_mode: surface_caps.alpha_modes[0],
-            view_formats: vec![],
-        };
-
-        Self {
-            surface,
-            device,
-            queue,
-            config,
-            size,
-            window,
-        }
     }
 }
