@@ -27,11 +27,11 @@ impl Camera {
     ) {
         let entity = CameraEntity {
             eye: (
-                0.0, 2.0, 0.0,
+                0.0, 20.0, 0.0,
             )
                 .into(),
             dir: (
-                0.1, -1.0, 0.1,
+                1., -0.5, 1.,
             )
                 .into(),
             up: cgmath::Vector3::unit_y(),

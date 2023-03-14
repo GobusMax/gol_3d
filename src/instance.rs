@@ -4,11 +4,13 @@ use wgpu::{
     Buffer, BufferUsages, Device,
 };
 
-pub const INSTANCES_PER_ROW: i32 = 10;
-pub const INSTANCE_DISPLACEMENT: Vector3<f32> = vec3(
-    INSTANCES_PER_ROW as f32 * 0.5,
+use crate::game_of_life::GameOfLife;
+
+pub const _INSTANCES_PER_ROW: i32 = 10;
+pub const _INSTANCE_DISPLACEMENT: Vector3<f32> = vec3(
+    _INSTANCES_PER_ROW as f32 * 0.5,
     0.,
-    INSTANCES_PER_ROW as f32 * 0.5,
+    _INSTANCES_PER_ROW as f32 * 0.5,
 );
 
 pub struct InstancesVec {
@@ -17,16 +19,64 @@ pub struct InstancesVec {
     pub buffer: Buffer,
 }
 
+impl
+    From<(
+        &GameOfLife,
+        &Device,
+    )> for InstancesVec
+{
+    fn from(
+        (gol, device): (
+            &GameOfLife,
+            &wgpu::Device,
+        ),
+    ) -> Self {
+        let instances: Vec<Instance> = gol
+            .cells
+            .indexed_iter()
+            .filter_map(
+                |(i, c)| {
+                    if *c == 0 {
+                        None
+                    } else {
+                        Some(
+                            Instance {
+                                position: vec3(
+                                    i.0 as _, i.1 as _, i.2 as _,
+                                ) * 0.6,
+                                rotation: Quaternion::zero(),
+                            },
+                        )
+                    }
+                },
+            )
+            .collect();
+        let raw = instances.iter().map(RawInstance::new).collect::<Vec<_>>();
+        let buffer = device.create_buffer_init(
+            &BufferInitDescriptor {
+                label: Some("Instance Buffer"),
+                contents: bytemuck::cast_slice(&raw),
+                usage: BufferUsages::VERTEX,
+            },
+        );
+        Self {
+            data: instances,
+            raw,
+            buffer,
+        }
+    }
+}
+
 impl InstancesVec {
-    pub fn new(device: &Device) -> Self {
-        let instances = (0..INSTANCES_PER_ROW)
+    pub fn _test(device: &Device) -> Self {
+        let instances = (0.._INSTANCES_PER_ROW)
             .flat_map(
                 |i| {
-                    (0..INSTANCES_PER_ROW).map(
+                    (0.._INSTANCES_PER_ROW).map(
                         move |j| {
                             let position = vec3(
                                 i as f32, 0., j as f32,
-                            ) - INSTANCE_DISPLACEMENT;
+                            ) - _INSTANCE_DISPLACEMENT;
 
                             let rotation = if position.is_zero() {
                                 cgmath::Quaternion::from_axis_angle(
@@ -47,17 +97,17 @@ impl InstancesVec {
             )
             .collect::<Vec<_>>();
 
-        let raw_instances = instances.iter().map(RawInstance::new).collect::<Vec<_>>();
+        let raw = instances.iter().map(RawInstance::new).collect::<Vec<_>>();
         let buffer = device.create_buffer_init(
             &BufferInitDescriptor {
                 label: Some("Instance Buffer"),
-                contents: bytemuck::cast_slice(&raw_instances),
+                contents: bytemuck::cast_slice(&raw),
                 usage: BufferUsages::VERTEX,
             },
         );
         Self {
             data: instances,
-            raw: raw_instances,
+            raw,
             buffer,
         }
     }

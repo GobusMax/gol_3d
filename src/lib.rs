@@ -1,11 +1,13 @@
 mod camera;
 mod environment;
+mod game_of_life;
 mod instance;
 mod model;
 mod texture;
 
 use camera::Camera;
 use environment::Environment;
+use game_of_life::GameOfLife;
 use model::{Model, Vertex};
 use wgpu::{
     include_wgsl, BindGroup, BlendState, ColorTargetState, ColorWrites, CommandEncoderDescriptor,
@@ -19,6 +21,8 @@ use winit::{
     event_loop::{ControlFlow, EventLoop},
     window::{Window, WindowBuilder},
 };
+
+const SIZE: usize = 23;
 
 pub async fn run() {
     env_logger::init();
@@ -106,9 +110,13 @@ struct State {
     instances: instance::InstancesVec,
     depth_texture: texture::Texture,
     render_pipeline: RenderPipeline,
+    gol: GameOfLife,
+    paused: bool,
 }
 impl State {
     async fn new(window: Window) -> Self {
+        //* GOL
+        let gol = GameOfLife::new_single(SIZE);
         //* ENVIRONMENT
         let env = Environment::new(window).await;
 
@@ -135,7 +143,12 @@ impl State {
             model::CUBE,
             model::CUBE_INDICES,
         );
-        let instances = instance::InstancesVec::new(&env.device);
+        let instances = instance::InstancesVec::from(
+            (
+                &gol,
+                &env.device,
+            ),
+        );
 
         //* RENDERING
         let depth_texture = texture::Texture::create_depth_texture(
@@ -169,6 +182,8 @@ impl State {
             instances,
             depth_texture,
             render_pipeline,
+            gol,
+            paused: true,
         }
     }
 
@@ -246,10 +261,40 @@ impl State {
     }
 
     fn input(&mut self, event: &WindowEvent) -> bool {
+        match event {
+            WindowEvent::KeyboardInput { input, .. }
+                if input.virtual_keycode == Some(VirtualKeyCode::Space)
+                    && input.state == ElementState::Pressed =>
+            {
+                self.gol.update();
+                self.instances = (
+                    &self.gol,
+                    &self.env.device,
+                )
+                    .into();
+                return true;
+            }
+            WindowEvent::KeyboardInput { input, .. }
+                if input.virtual_keycode == Some(VirtualKeyCode::P)
+                    && input.state == ElementState::Released =>
+            {
+                self.paused = !self.paused;
+                return true;
+            }
+            _ => (),
+        }
         self.camera.controller.process_events(event)
     }
 
     fn update(&mut self) {
+        if !self.paused {
+            self.gol.update();
+            self.instances = (
+                &self.gol,
+                &self.env.device,
+            )
+                .into();
+        }
         self.camera.update();
         self.env.queue.write_buffer(
             &self.camera.buffer,
