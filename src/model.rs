@@ -1,69 +1,54 @@
 use wgpu::{util::DeviceExt, Buffer, BufferUsages, Device, VertexBufferLayout};
 
-pub const _PENTAGON: &[Vertex] = &[
-    Vertex {
-        position: [-0.0868241, 0.0, 0.49240386],
-        tex_coords: [0.4131759, 0.99240386],
-    },
-    Vertex {
-        position: [-0.49513406, 0.0, 0.06958647],
-        tex_coords: [0.0048659444, 0.56958647],
-    },
-    Vertex {
-        position: [-0.21918549, 0.0, -0.44939706],
-        tex_coords: [0.28081453, 0.05060294],
-    },
-    Vertex {
-        position: [0.35966998, 0.0, -0.3473291],
-        tex_coords: [0.85967, 0.1526709],
-    },
-    Vertex {
-        position: [0.44147372, 0.0, 0.2347359],
-        tex_coords: [0.9414737, 0.7347359],
-    },
-];
-pub const _PENTAGON_INDICES: &[u16] = &[0, 1, 4, 1, 2, 4, 2, 3, 4];
-
+const SQRT_3: f32 = 1.7320508;
 pub const CUBE: &[Vertex] = &[
     //0
     Vertex {
         position: [0., 0., 0.],
         tex_coords: [0., 0.],
+        normal: [-SQRT_3, -SQRT_3, -SQRT_3],
     },
     //1
     Vertex {
         position: [0., 0., 1.],
         tex_coords: [0., 1.],
+        normal: [-SQRT_3, -SQRT_3, SQRT_3],
     },
     //2
     Vertex {
         position: [0., 1., 0.],
         tex_coords: [1., 0.],
+        normal: [-SQRT_3, SQRT_3, -SQRT_3],
     },
     //3
     Vertex {
         position: [0., 1., 1.],
         tex_coords: [1., 1.],
+        normal: [-SQRT_3, SQRT_3, SQRT_3],
     },
     //4
     Vertex {
         position: [1., 0., 0.],
         tex_coords: [0., 1.],
+        normal: [SQRT_3, -SQRT_3, -SQRT_3],
     },
     //5
     Vertex {
         position: [1., 0., 1.],
         tex_coords: [0., 0.],
+        normal: [SQRT_3, -SQRT_3, SQRT_3],
     },
     //6
     Vertex {
         position: [1., 1., 0.],
         tex_coords: [1., 1.],
+        normal: [SQRT_3, SQRT_3, -SQRT_3],
     },
     //7
     Vertex {
         position: [1., 1., 1.],
         tex_coords: [1., 0.],
+        normal: [SQRT_3, SQRT_3, SQRT_3],
     },
 ];
 #[rustfmt::skip]
@@ -124,6 +109,7 @@ impl Model {
 pub struct Vertex {
     position: [f32; 3],
     tex_coords: [f32; 2],
+    normal: [f32; 3],
 }
 impl Vertex {
     pub fn desc<'a>() -> VertexBufferLayout<'a> {
@@ -140,6 +126,11 @@ impl Vertex {
                     offset: std::mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
                     shader_location: 1,
                     format: wgpu::VertexFormat::Float32x2,
+                },
+                wgpu::VertexAttribute {
+                    offset: std::mem::size_of::<[f32; 5]>() as wgpu::BufferAddress,
+                    shader_location: 2,
+                    format: wgpu::VertexFormat::Float32x3,
                 },
             ],
         }

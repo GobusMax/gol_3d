@@ -1,4 +1,4 @@
-use cgmath::{prelude::*, vec3, Matrix4, Quaternion, Vector3};
+use cgmath::{prelude::*, vec3, vec4, Matrix4, Quaternion, Vector3, Vector4};
 use wgpu::{
     util::{BufferInitDescriptor, DeviceExt},
     Buffer, BufferUsages, Device,
@@ -45,6 +45,12 @@ impl
                                     i.0 as _, i.1 as _, i.2 as _,
                                 ) * 0.6,
                                 rotation: Quaternion::zero(),
+                                color: vec4(
+                                    *c as f32 / GameOfLife::MAX_STATE as f32,
+                                    0.,
+                                    0.,
+                                    1.,
+                                ),
                             },
                         )
                     }
@@ -90,7 +96,13 @@ impl InstancesVec {
                                 )
                             };
 
-                            Instance { position, rotation }
+                            Instance {
+                                position,
+                                rotation,
+                                color: vec4(
+                                    1., 0., 0., 1.,
+                                ),
+                            }
                         },
                     )
                 },
@@ -115,11 +127,13 @@ impl InstancesVec {
 pub struct Instance {
     pub position: Vector3<f32>,
     pub rotation: Quaternion<f32>,
+    pub color: Vector4<f32>,
 }
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct RawInstance {
     model: [[f32; 4]; 4],
+    color: [f32; 4],
 }
 impl RawInstance {
     pub fn new(instance: &Instance) -> Self {
@@ -128,6 +142,7 @@ impl RawInstance {
                 * Matrix4::from_scale(0.5)
                 * Matrix4::from(instance.rotation))
             .into(),
+            color: instance.color.into(),
         }
     }
 
@@ -155,6 +170,11 @@ impl RawInstance {
                 wgpu::VertexAttribute {
                     offset: mem::size_of::<[f32; 12]>() as wgpu::BufferAddress,
                     shader_location: 8,
+                    format: wgpu::VertexFormat::Float32x4,
+                },
+                wgpu::VertexAttribute {
+                    offset: mem::size_of::<[f32; 16]>() as wgpu::BufferAddress,
+                    shader_location: 9,
                     format: wgpu::VertexFormat::Float32x4,
                 },
             ],

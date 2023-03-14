@@ -5,6 +5,8 @@ use wgpu::{
 };
 use winit::event::*;
 
+use crate::SIZE;
+
 pub const OPENGL_TO_WGPU_MATRIX: Matrix4<f32> = Matrix4::new(
     1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.0, 0.0, 0.0, 0.5, 1.0,
 );
@@ -27,18 +29,22 @@ impl Camera {
     ) {
         let entity = CameraEntity {
             eye: (
-                0.0, 20.0, 0.0,
+                SIZE as f32,
+                SIZE as f32,
+                SIZE as f32,
             )
                 .into(),
-            dir: (
-                1., -0.5, 1.,
+            dir: Vector3::from(
+                (
+                    -1., -1., -1.,
+                ),
             )
-                .into(),
+            .normalize(),
             up: cgmath::Vector3::unit_y(),
             aspect: config.width as f32 / config.height as f32,
             fovy: 45.0,
             znear: 0.1,
-            zfar: 100.0,
+            zfar: 1000.0,
         };
         let mut uniform = CameraUniform::new();
         uniform.update_view_proj(&entity);

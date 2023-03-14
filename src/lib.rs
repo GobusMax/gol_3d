@@ -5,10 +5,13 @@ mod instance;
 mod model;
 mod texture;
 
+use std::time::Instant;
+
 use camera::Camera;
 use environment::Environment;
 use game_of_life::GameOfLife;
 use model::{Model, Vertex};
+use pollster::FutureExt;
 use wgpu::{
     include_wgsl, BindGroup, BlendState, ColorTargetState, ColorWrites, CommandEncoderDescriptor,
     DepthBiasState, DepthStencilState, Device, FragmentState, MultisampleState, Operations,
@@ -22,9 +25,10 @@ use winit::{
     window::{Window, WindowBuilder},
 };
 
-const SIZE: usize = 23;
+const SIZE: usize = 16;
 
-pub async fn run() {
+pub fn run() {
+    let mut start = Instant::now();
     env_logger::init();
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
@@ -36,7 +40,7 @@ pub async fn run() {
         .build(&event_loop)
         .unwrap();
 
-    let mut state = State::new(window).await;
+    let mut state = State::new(window);
     state
         .env
         .window
@@ -73,6 +77,8 @@ pub async fn run() {
                 }
             }
             Event::RedrawRequested(window_id) if window_id == state.env.window.id() => {
+                let delta = start.elapsed().as_secs_f32();
+                start = Instant::now();
                 state.update();
                 match state.render() {
                     Ok(_) => {}
@@ -86,6 +92,10 @@ pub async fn run() {
                         e
                     ),
                 }
+                // println!(
+                //     "{}",
+                //     1. / delta
+                // )
             }
             Event::MainEventsCleared => {
                 state.env.window.request_redraw();
@@ -114,11 +124,11 @@ struct State {
     paused: bool,
 }
 impl State {
-    async fn new(window: Window) -> Self {
+    fn new(window: Window) -> Self {
         //* GOL
-        let gol = GameOfLife::new_single(SIZE);
+        let gol = GameOfLife::new_random(SIZE);
         //* ENVIRONMENT
-        let env = Environment::new(window).await;
+        let env = Environment::new(window).block_on();
 
         //* TEXTURE
         let diffuse_bytes = include_bytes!("happy-tree.png");
@@ -206,7 +216,7 @@ impl State {
                     topology: PrimitiveTopology::TriangleList,
                     strip_index_format: None,
                     front_face: wgpu::FrontFace::Ccw,
-                    cull_mode: None,
+                    cull_mode: Some(wgpu::Face::Back),
                     unclipped_depth: false,
                     polygon_mode: wgpu::PolygonMode::Fill,
                     conservative: false,
