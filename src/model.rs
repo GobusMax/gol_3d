@@ -1,7 +1,180 @@
 use wgpu::{util::DeviceExt, Buffer, BufferUsages, Device, VertexBufferLayout};
 
-const SQRT_3: f32 = 1.7320508;
 pub const CUBE: &[Vertex] = &[
+    // *0
+    Vertex {
+        position: [-0.5, -0.5, -0.5],
+        tex_coords: [0., 0.],
+        normal: [0., 0., -1.],
+    },
+    // *1
+    Vertex {
+        position: [0.5, -0.5, -0.5],
+        tex_coords: [1., 0.],
+        normal: [0., 0., -1.],
+    },
+    // *2
+    Vertex {
+        position: [-0.5, 0.5, -0.5],
+        tex_coords: [0., 1.],
+        normal: [0., 0., -1.],
+    },
+    // *3
+    Vertex {
+        position: [0.5, 0.5, -0.5],
+        tex_coords: [1., 1.],
+        normal: [0., 0., -1.],
+    },
+    // *
+    // *4
+    Vertex {
+        position: [-0.5, -0.5, 0.5],
+        tex_coords: [0., 0.],
+        normal: [0., 0., 1.],
+    },
+    // *5
+    Vertex {
+        position: [0.5, -0.5, 0.5],
+        tex_coords: [1., 0.],
+        normal: [0., 0., 1.],
+    },
+    // *6
+    Vertex {
+        position: [-0.5, 0.5, 0.5],
+        tex_coords: [0., 1.],
+        normal: [0., 0., 1.],
+    },
+    // *7
+    Vertex {
+        position: [0.5, 0.5, 0.5],
+        tex_coords: [1., 1.],
+        normal: [0., 0., 1.],
+    },
+    // *
+    // *8
+    Vertex {
+        position: [-0.5, -0.5, -0.5],
+        tex_coords: [0., 0.],
+        normal: [-1., 0., 0.],
+    },
+    // *9
+    Vertex {
+        position: [-0.5, 0.5, -0.5],
+        tex_coords: [0., 1.],
+        normal: [-1., 0., 0.],
+    },
+    // *10
+    Vertex {
+        position: [-0.5, -0.5, 0.5],
+        tex_coords: [1., 0.],
+        normal: [-1., 0., 0.],
+    },
+    // *11
+    Vertex {
+        position: [-0.5, 0.5, 0.5],
+        tex_coords: [1., 1.],
+        normal: [-1., 0., 0.],
+    },
+    // *
+    // *12
+    Vertex {
+        position: [0.5, -0.5, -0.5],
+        tex_coords: [0., 0.],
+        normal: [1., 0., 0.],
+    },
+    // *13
+    Vertex {
+        position: [0.5, 0.5, -0.5],
+        tex_coords: [0., 1.],
+        normal: [1., 0., 0.],
+    },
+    // *14
+    Vertex {
+        position: [0.5, -0.5, 0.5],
+        tex_coords: [1., 0.],
+        normal: [1., 0., 0.],
+    },
+    // *15
+    Vertex {
+        position: [0.5, 0.5, 0.5],
+        tex_coords: [1., 1.],
+        normal: [1., 0., 0.],
+    },
+    // *
+    // *16
+    Vertex {
+        position: [-0.5, -0.5, -0.5],
+        tex_coords: [0., 0.],
+        normal: [0., -1., 0.],
+    },
+    // *17
+    Vertex {
+        position: [-0.5, -0.5, 0.5],
+        tex_coords: [0., 1.],
+        normal: [0., -1., 0.],
+    },
+    // *18
+    Vertex {
+        position: [0.5, -0.5, -0.5],
+        tex_coords: [1., 0.],
+        normal: [0., -1., 0.],
+    },
+    // *19
+    Vertex {
+        position: [0.5, -0.5, 0.5],
+        tex_coords: [1., 1.],
+        normal: [0., -1., 0.],
+    },
+    // *
+    // *20
+    Vertex {
+        position: [-0.5, 0.5, -0.5],
+        tex_coords: [0., 0.],
+        normal: [0., 1., 0.],
+    },
+    // *21
+    Vertex {
+        position: [-0.5, 0.5, 0.5],
+        tex_coords: [0., 1.],
+        normal: [0., 1., 0.],
+    },
+    // *22
+    Vertex {
+        position: [0.5, 0.5, -0.5],
+        tex_coords: [1., 0.],
+        normal: [0., 1., 0.],
+    },
+    // *23
+    Vertex {
+        position: [0.5, 0.5, 0.5],
+        tex_coords: [1., 1.],
+        normal: [0., 1., 0.],
+    },
+];
+#[rustfmt::skip]
+pub const CUBE_INDICES: &[u16] = &[
+    0, 2, 1,
+    3, 1, 2,
+
+    6, 4, 5,
+    5, 7, 6,
+
+    8, 10, 9,
+    11, 9, 10,
+
+    14, 12, 13,
+    13, 15, 14,
+
+    16, 18, 17,
+    19, 17, 18,
+
+    22, 20, 21,
+    21, 23, 22,
+
+];
+
+const SQRT_3: f32 = 1.7320508;
+pub const CUBE_OLD: &[Vertex] = &[
     //0
     Vertex {
         position: [0., 0., 0.],
@@ -52,7 +225,7 @@ pub const CUBE: &[Vertex] = &[
     },
 ];
 #[rustfmt::skip]
-pub const CUBE_INDICES: &[u16] = &[
+pub const CUBE_INDICES_OLD: &[u16] = &[
     0, 1, 2, 
     3, 2, 1, 
     
@@ -72,7 +245,6 @@ pub const CUBE_INDICES: &[u16] = &[
     7, 6, 3,
     
 ];
-
 pub struct Model {
     pub vertex_buffer: Buffer,
     pub index_buffer: Buffer,

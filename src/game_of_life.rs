@@ -9,7 +9,7 @@ pub struct GameOfLife {
 impl GameOfLife {
     pub const MAX_STATE: u8 = 1;
     pub fn new_random(size: usize) -> Self {
-        let mut cells = Array3::<u8>::random(
+        let cells = Array3::<u8>::random(
             (
                 size, size, size,
             ),
@@ -135,7 +135,7 @@ impl GameOfLife {
         sum
     }
     // ! TODO
-    fn von_neumann_neigborhood(
+    fn _von_neumann_neigborhood(
         &self,
         index: (
             usize,

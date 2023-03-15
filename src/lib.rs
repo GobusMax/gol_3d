@@ -25,10 +25,10 @@ use winit::{
     window::{Window, WindowBuilder},
 };
 
-const SIZE: usize = 16;
+const SIZE: usize = 32;
 
 pub fn run() {
-    let mut start = Instant::now();
+    let mut timer = Instant::now();
     env_logger::init();
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
@@ -77,9 +77,9 @@ pub fn run() {
                 }
             }
             Event::RedrawRequested(window_id) if window_id == state.env.window.id() => {
-                let delta = start.elapsed().as_secs_f32();
-                start = Instant::now();
-                state.update();
+                let delta = timer.elapsed().as_secs_f32();
+                timer = Instant::now();
+                state.update(delta);
                 match state.render() {
                     Ok(_) => {}
                     // Reconfigure the surface if lost
@@ -92,10 +92,10 @@ pub fn run() {
                         e
                     ),
                 }
-                // println!(
-                //     "{}",
-                //     1. / delta
-                // )
+                println!(
+                    "{}",
+                    1. / delta
+                )
             }
             Event::MainEventsCleared => {
                 state.env.window.request_redraw();
@@ -131,7 +131,7 @@ impl State {
         let env = Environment::new(window).block_on();
 
         //* TEXTURE
-        let diffuse_bytes = include_bytes!("happy-tree.png");
+        let diffuse_bytes = include_bytes!("uv_test.jpg");
         let (texture, texture_bind_group_layout, texture_bind_group) =
             texture::Texture::from_bytes(
                 &env.device,
@@ -242,7 +242,7 @@ impl State {
                         targets: &[Some(
                             ColorTargetState {
                                 format: config.format,
-                                blend: Some(BlendState::ALPHA_BLENDING),
+                                blend: Some(BlendState::REPLACE),
                                 write_mask: ColorWrites::ALL,
                             },
                         )],
@@ -296,7 +296,7 @@ impl State {
         self.camera.controller.process_events(event)
     }
 
-    fn update(&mut self) {
+    fn update(&mut self, delta: f32) {
         if !self.paused {
             self.gol.update();
             self.instances = (
@@ -305,7 +305,7 @@ impl State {
             )
                 .into();
         }
-        self.camera.update();
+        self.camera.update(delta);
         self.env.queue.write_buffer(
             &self.camera.buffer,
             0,

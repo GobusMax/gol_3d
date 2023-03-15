@@ -28,7 +28,7 @@ impl Camera {
         BindGroupLayout,
     ) {
         let entity = CameraEntity {
-            eye: (
+            pos: (
                 SIZE as f32,
                 SIZE as f32,
                 SIZE as f32,
@@ -81,7 +81,8 @@ impl Camera {
             },
         );
         let controller = CameraController::new(
-            0.01, 0.001,
+            SIZE as f32 * 1.,
+            0.001,
         );
 
         (
@@ -96,13 +97,16 @@ impl Camera {
         )
     }
 
-    pub fn update(&mut self) {
-        self.controller.update_camera_entity(&mut self.entity);
+    pub fn update(&mut self, delta: f32) {
+        self.controller.update_camera_entity(
+            &mut self.entity,
+            delta,
+        );
         self.uniform.update_view_proj(&self.entity);
     }
 }
 pub struct CameraEntity {
-    pub eye: Point3<f32>,
+    pub pos: Point3<f32>,
     pub dir: Vector3<f32>,
     pub up: Vector3<f32>,
     pub aspect: f32,
@@ -114,7 +118,7 @@ pub struct CameraEntity {
 impl CameraEntity {
     pub fn build_view_projection_matrix(&self) -> Matrix4<f32> {
         let view = Matrix4::look_to_rh(
-            self.eye, self.dir, self.up,
+            self.pos, self.dir, self.up,
         );
         let proj = perspective(
             Deg(self.fovy),
@@ -213,7 +217,7 @@ impl CameraController {
             false
         }
     }
-    pub fn update_camera_entity(&mut self, camera_entity: &mut CameraEntity) {
+    pub fn update_camera_entity(&mut self, camera_entity: &mut CameraEntity, delta: f32) {
         camera_entity.dir = camera_entity.dir.normalize();
         let yaw = Matrix3::from_angle_y(Rad(-self.delta.0) * self.sens);
         camera_entity.dir = yaw * camera_entity.dir;
@@ -237,20 +241,21 @@ impl CameraController {
             camera_entity.dir.y = camera_entity.dir.y.signum();
         }
         camera_entity.dir = camera_entity.dir.normalize();
+        let forward = camera_entity.dir * self.speed * delta;
         if self.is_forward_pressed {
-            camera_entity.eye += camera_entity.dir * self.speed;
+            camera_entity.pos += forward
         }
         if self.is_backward_pressed {
-            camera_entity.eye -= camera_entity.dir * self.speed;
+            camera_entity.pos -= forward
         }
 
-        let right = camera_entity.dir.cross(camera_entity.up).normalize();
+        let right = camera_entity.dir.cross(camera_entity.up).normalize() * self.speed * delta;
 
         if self.is_right_pressed {
-            camera_entity.eye += right * self.speed;
+            camera_entity.pos += right;
         }
         if self.is_left_pressed {
-            camera_entity.eye += right * -self.speed;
+            camera_entity.pos -= right;
         }
     }
 }
