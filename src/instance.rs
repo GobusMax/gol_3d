@@ -40,8 +40,8 @@ impl
                                 rotation: Quaternion::zero(),
                                 color: vec4(
                                     *c as f32 / gol.rule.max_state as f32,
-                                    0.,
-                                    0.,
+                                    *c as f32 / gol.rule.max_state as f32,
+                                    *c as f32 / gol.rule.max_state as f32,
                                     1.,
                                 ),
                             },

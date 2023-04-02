@@ -1,16 +1,17 @@
-use std::{ops::RangeInclusive, str::FromStr};
+use std::{ops::RangeInclusive, str::FromStr, fmt::Display};
 
 use ndarray::Array3;
+use ndarray_rand::rand;
 
 #[allow(dead_code)]
-#[derive(Clone)]
+#[derive(Debug)]
 pub enum Neighborhood {
     Moore,
     MooreWrapping,
     VonNeumann,
     VonNeumannWrapping,
 }
-#[derive(Clone)]
+
 pub struct Rule {
     pub survive_mask: u32,
     pub born_mask: u32,
@@ -33,7 +34,10 @@ impl Rule {
             neighborhood,
         }
     }
+    pub fn new_random() -> Self{
 
+        Self { survive_mask: rand::random::<u32>() & (u32::MAX-1), born_mask:rand::random::<u32>() & (u32::MAX-1), max_state:rand::random::<u8>()/64 + 1, neighborhood: Neighborhood::MooreWrapping }
+    }
     pub fn survive(&self, count: u8) -> bool {
         self.survive_mask & (1 << count) != 0
     }
@@ -197,7 +201,11 @@ impl Rule {
         sum
     }
 }
-
+impl Display for Rule{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Rule{{\nsurvive_mask: {:#034b},\nborn_mask:    {:#034b},\nmax_state: {},\nneighborhood: rule::Neighborhood::{:?}\n}};",self.survive_mask,self.born_mask,self.max_state,self.neighborhood)
+    }
+}
 #[derive(Debug, PartialEq, Eq)]
 pub struct ParseRuleError;
 impl FromStr for Rule {

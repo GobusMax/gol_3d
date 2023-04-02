@@ -36,7 +36,7 @@ pub fn run() {
     let window = WindowBuilder::new()
         .with_inner_size(
             winit::dpi::PhysicalSize::new(
-                1600, 900,
+                900, 900,
             ),
         )
         .build(&event_loop)
@@ -94,10 +94,10 @@ pub fn run() {
                         e
                     ),
                 }
-                println!(
-                    "{}",
-                    1. / delta
-                )
+                // println!(
+                //     "{}",
+                //     1. / delta
+                // )
             }
             Event::MainEventsCleared => {
                 state.env.window.request_redraw();
@@ -130,12 +130,38 @@ impl State {
             .parse::<Rule>()
             .unwrap();
         let crystal_growth = ("0-6/1,3/2/NNW").parse::<Rule>().unwrap();
+        let clouds2 = "12-26/13-14/2/M".parse::<Rule>().unwrap();
+        let dodec = Rule {
+            survive_mask: 0b00010000101000110110100001000010,
+            born_mask: 0b10100110001110111001000011111000,
+            max_state: 1,
+            neighborhood: rule::Neighborhood::MooreWrapping,
+        };
+        let wavy_explosion = Rule {
+            survive_mask: 0b01110101000100101010001010011110,
+            born_mask: 0b01001011101111001000101011001000,
+            max_state: 4,
+            neighborhood: rule::Neighborhood::MooreWrapping,
+        };
+        let labyrinth_box = Rule {
+            survive_mask: 0b01001111100100001010101100100000,
+            born_mask: 0b00001111000101000101100000011110,
+            max_state: 4,
+            neighborhood: rule::Neighborhood::MooreWrapping,
+        };
+        let city_builer = Rule {
+            survive_mask: 0b10111011110010111010111000011110,
+            born_mask: 0b01010010000011010101001001110000,
+            max_state: 4,
+            neighborhood: rule::Neighborhood::MooreWrapping,
+        }; // restart often
         let gol = GameOfLife {
-            cells: GameOfLife::new_single(
+            cells: GameOfLife::new_random_partial(
                 SIZE,
-                crystal_growth.max_state,
+                SIZE / 8,
+                dodec.max_state,
             ),
-            rule: crystal_growth,
+            rule: dodec,
         };
         //* ENVIRONMENT
         let env = Environment::new(window).block_on();
@@ -294,19 +320,37 @@ impl State {
                 if input.virtual_keycode == Some(VirtualKeyCode::R)
                     && input.state == ElementState::Released =>
             {
-                self.gol = GameOfLife {
-                    cells: GameOfLife::new_random_partial(
-                        SIZE,
-                        SIZE / 2,
-                        self.gol.rule.max_state,
-                    ),
-                    rule: self.gol.rule.clone(),
-                };
+                self.gol.cells = GameOfLife::new_random_partial(
+                    SIZE,
+                    SIZE / 4,
+                    self.gol.rule.max_state,
+                );
                 self.instances = (
                     &self.gol,
                     &self.env.device,
                 )
                     .into();
+                return true;
+            }
+            WindowEvent::KeyboardInput { input, .. }
+                if input.virtual_keycode == Some(VirtualKeyCode::Q)
+                    && input.state == ElementState::Released =>
+            {
+                self.gol.rule = Rule::new_random();
+                self.gol.cells = GameOfLife::new_random_partial(
+                    SIZE,
+                    SIZE / 4,
+                    self.gol.rule.max_state,
+                );
+                self.instances = (
+                    &self.gol,
+                    &self.env.device,
+                )
+                    .into();
+                println!(
+                    "{}",
+                    self.gol.rule
+                );
                 return true;
             }
             _ => (),

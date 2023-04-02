@@ -61,21 +61,21 @@ impl GameOfLife {
         cells[(
             half, half, half,
         )] = max_state;
-        cells[(
-            half + 1,
-            half,
-            half,
-        )] = max_state;
-        cells[(
-            half,
-            half + 1,
-            half,
-        )] = max_state;
-        cells[(
-            half + 1,
-            half + 1,
-            half,
-        )] = max_state;
+        // cells[(
+        //     half + 1,
+        //     half,
+        //     half,
+        // )] = max_state;
+        // cells[(
+        //     half,
+        //     half + 1,
+        //     half,
+        // )] = max_state;
+        // cells[(
+        //     half + 1,
+        //     half + 1,
+        //     half,
+        // )] = max_state;
         cells
     }
 
