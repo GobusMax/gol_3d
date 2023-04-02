@@ -13,7 +13,7 @@ use environment::Environment;
 use game_of_life::GameOfLife;
 use model::{Model, Vertex};
 use pollster::FutureExt;
-use rule::{Neighborhood, Rule};
+use rule::Rule;
 use wgpu::{
     include_wgsl, BlendState, ColorTargetState, ColorWrites, CommandEncoderDescriptor,
     DepthBiasState, DepthStencilState, Device, FragmentState, MultisampleState, Operations,
@@ -94,10 +94,10 @@ pub fn run() {
                         e
                     ),
                 }
-                // println!(
-                //     "{}",
-                //     1. / delta
-                // )
+                println!(
+                    "{}",
+                    1. / delta
+                )
             }
             Event::MainEventsCleared => {
                 state.env.window.request_redraw();
@@ -115,8 +115,6 @@ pub fn run() {
 
 struct State {
     env: environment::Environment,
-    // texture_bind_group: BindGroup,
-    // _texture: texture::Texture,
     camera: Camera,
     model: Model,
     instances: instance::InstancesVec,
@@ -131,13 +129,13 @@ impl State {
         let shells = ("3,5,7,9,11,15,17,19,21,23-24,26/3,6,8-9,11,14-17,19,24/7/M")
             .parse::<Rule>()
             .unwrap();
+        let crystal_growth = ("0-6/1,3/2/NNW").parse::<Rule>().unwrap();
         let gol = GameOfLife {
-            cells: GameOfLife::new_random_partial(
+            cells: GameOfLife::new_single(
                 SIZE,
-                SIZE / 2,
-                shells.max_state,
+                crystal_growth.max_state,
             ),
-            rule: shells,
+            rule: crystal_growth,
         };
         //* ENVIRONMENT
         let env = Environment::new(window).block_on();
@@ -172,9 +170,7 @@ impl State {
         let render_pipeline_layout = env.device.create_pipeline_layout(
             &PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
-                bind_group_layouts: &[
-                    /* &texture_bind_group_layout, */ &camera_bind_group_layout,
-                ],
+                bind_group_layouts: &[&camera_bind_group_layout],
                 push_constant_ranges: &[],
             },
         );
@@ -187,8 +183,6 @@ impl State {
 
         Self {
             env,
-            // texture_bind_group,
-            // _texture: texture,
             camera,
             model,
             instances,
@@ -212,7 +206,11 @@ impl State {
                 vertex: VertexState {
                     module: &shader,
                     entry_point: "vs_main",
-                    buffers: &[Vertex::desc(), instance::RawInstance::desc()],
+                    buffers: &[
+                        Vertex::desc(),
+                        instance::RawInstance::desc(),
+                        // Vertex::desc(),
+                    ],
                 },
                 primitive: PrimitiveState {
                     topology: PrimitiveTopology::TriangleList,
@@ -379,11 +377,7 @@ impl State {
                 },
             );
             render_pass.set_pipeline(&self.render_pipeline);
-            // render_pass.set_bind_group(
-            //     0,
-            //     &self.texture_bind_group,
-            //     &[],
-            // );
+
             render_pass.set_bind_group(
                 0,
                 &self.camera.bind_group,
@@ -397,10 +391,15 @@ impl State {
                 1,
                 self.instances.buffer.slice(..),
             );
+            // render_pass.set_vertex_buffer(
+            //     2,
+            //     self.model.vertex_buffer.slice(..),
+            // );
             render_pass.set_index_buffer(
                 self.model.index_buffer.slice(..),
                 wgpu::IndexFormat::Uint16,
             );
+
             render_pass.draw_indexed(
                 0..self.model.num_indices,
                 0,

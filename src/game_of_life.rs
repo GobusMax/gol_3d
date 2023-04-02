@@ -51,7 +51,7 @@ impl GameOfLife {
         cells
     }
     #[allow(dead_code)]
-    pub fn new_single(size: usize, rule: Rule) -> Self {
+    pub fn new_single(size: usize, max_state: u8) -> Array3<u8> {
         let mut cells = Array3::<u8>::zeros(
             (
                 size, size, size,
@@ -60,23 +60,23 @@ impl GameOfLife {
         let half = size / 2;
         cells[(
             half, half, half,
-        )] = rule.max_state;
+        )] = max_state;
         cells[(
             half + 1,
             half,
             half,
-        )] = rule.max_state;
+        )] = max_state;
         cells[(
             half,
             half + 1,
             half,
-        )] = rule.max_state;
+        )] = max_state;
         cells[(
             half + 1,
             half + 1,
             half,
-        )] = rule.max_state;
-        Self { cells, rule }
+        )] = max_state;
+        cells
     }
 
     pub fn update(&mut self) {

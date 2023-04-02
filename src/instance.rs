@@ -6,13 +6,6 @@ use wgpu::{
 
 use crate::game_of_life::GameOfLife;
 
-pub const _INSTANCES_PER_ROW: i32 = 10;
-pub const _INSTANCE_DISPLACEMENT: Vector3<f32> = vec3(
-    _INSTANCES_PER_ROW as f32 * 0.5,
-    0.,
-    _INSTANCES_PER_ROW as f32 * 0.5,
-);
-
 pub struct InstancesVec {
     pub data: Vec<Instance>,
     pub raw: Vec<RawInstance>,
@@ -73,57 +66,6 @@ impl
     }
 }
 
-impl InstancesVec {
-    pub fn _test(device: &Device) -> Self {
-        let instances = (0.._INSTANCES_PER_ROW)
-            .flat_map(
-                |i| {
-                    (0.._INSTANCES_PER_ROW).map(
-                        move |j| {
-                            let position = vec3(
-                                i as f32, 0., j as f32,
-                            ) - _INSTANCE_DISPLACEMENT;
-
-                            let rotation = if position.is_zero() {
-                                cgmath::Quaternion::from_axis_angle(
-                                    cgmath::Vector3::unit_z(),
-                                    cgmath::Deg(0.0),
-                                )
-                            } else {
-                                cgmath::Quaternion::from_axis_angle(
-                                    position.normalize(),
-                                    cgmath::Deg(45.0),
-                                )
-                            };
-
-                            Instance {
-                                position,
-                                rotation,
-                                color: vec4(
-                                    1., 0., 0., 1.,
-                                ),
-                            }
-                        },
-                    )
-                },
-            )
-            .collect::<Vec<_>>();
-
-        let raw = instances.iter().map(RawInstance::new).collect::<Vec<_>>();
-        let buffer = device.create_buffer_init(
-            &BufferInitDescriptor {
-                label: Some("Instance Buffer"),
-                contents: bytemuck::cast_slice(&raw),
-                usage: BufferUsages::VERTEX,
-            },
-        );
-        Self {
-            data: instances,
-            raw,
-            buffer,
-        }
-    }
-}
 pub struct Instance {
     pub position: Vector3<f32>,
     pub rotation: Quaternion<f32>,

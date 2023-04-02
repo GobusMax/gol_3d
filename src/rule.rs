@@ -19,6 +19,7 @@ pub struct Rule {
 }
 
 impl Rule {
+    #[allow(dead_code)]
     pub fn new<T: ToBitMask, U: ToBitMask>(
         survive: T,
         born: U,
@@ -55,7 +56,7 @@ impl Rule {
             Neighborhood::MooreWrapping => self.moore_neighborhood_wrapping(
                 cells, index,
             ),
-            Neighborhood::VonNeumann => self.von_neumann_neigborhood(
+            Neighborhood::VonNeumann => self.von_neumann_neigborhood2(
                 cells, index,
             ),
             Neighborhood::VonNeumannWrapping => todo!(),
@@ -154,9 +155,8 @@ impl Rule {
         }
         sum
     }
-    // ! TODO
-    #[allow(unused_variables)]
-    fn von_neumann_neigborhood(
+    #[rustfmt::skip]
+    fn von_neumann_neigborhood2(
         &self,
         cells: &Array3<u8>,
         index: (
@@ -167,18 +167,37 @@ impl Rule {
     ) -> u8 {
         let dim = cells.dim();
 
-        let up = if index.1 + 1 < dim.1 {
-            cells[(
-                index.0,
-                index.1 + 1,
-                index.2,
-            )]
-        } else {
-            0
-        };
-        todo!()
+          ((index.0 + 1 < dim.0 && cells[(index.0 + 1,index.1,index.2)] == self.max_state) as u8)
+        + ((index.1 + 1 < dim.1 && cells[(index.0,index.1 + 1,index.2)] == self.max_state) as u8)
+        + ((index.2 + 1 < dim.2 && cells[(index.0,index.1,index.2 + 1)] == self.max_state) as u8)
+        + ((index.0 > 0         && cells[(index.0 - 1,index.1,index.2)] == self.max_state) as u8)
+        + ((index.1 > 0         && cells[(index.0,index.1 - 1,index.2)] == self.max_state) as u8)
+        + ((index.2 > 0         && cells[(index.0,index.1,index.2 - 1)] == self.max_state) as u8)
+    }
+    #[rustfmt::skip]
+    fn von_neumann_neigborhood(
+        &self,
+        cells: &Array3<u8>,
+        index: (
+            usize,
+            usize,
+            usize,
+        ),
+    ) -> u8 {
+        let dim = cells.dim();
+        let mut sum = 0;
+        
+        if index.0 + 1 < dim.0 && cells[(index.0 + 1,index.1,index.2)] == self.max_state { sum += 1}
+        if index.1 + 1 < dim.1 && cells[(index.0,index.1 + 1,index.2)] == self.max_state { sum += 1}
+        if index.2 + 1 < dim.2 && cells[(index.0,index.1,index.2 + 1)] == self.max_state { sum += 1}
+        if index.0 > 0         && cells[(index.0 - 1,index.1,index.2)] == self.max_state { sum += 1}
+        if index.1 > 0         && cells[(index.0,index.1 - 1,index.2)] == self.max_state { sum += 1}
+        if index.2 > 0         && cells[(index.0,index.1,index.2 - 1)] == self.max_state { sum += 1}
+
+        sum
     }
 }
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct ParseRuleError;
 impl FromStr for Rule {
@@ -191,10 +210,10 @@ impl FromStr for Rule {
 
         let max_state = parts[2].parse::<u8>().unwrap() - 1;
         let neighborhood: Neighborhood = match parts[3] {
-            "M" => Neighborhood::Moore,
-            "MW" => Neighborhood::MooreWrapping,
-            "N" => Neighborhood::VonNeumann,
-            "NW" => Neighborhood::VonNeumannWrapping,
+            "M" => Neighborhood::MooreWrapping,
+            "MNW" => Neighborhood::Moore,
+            "N" => Neighborhood::VonNeumannWrapping,
+            "NNW" => Neighborhood::VonNeumann,
             _ => return Err(ParseRuleError),
         };
         Ok(
