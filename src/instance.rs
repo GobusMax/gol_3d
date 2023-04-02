@@ -43,7 +43,7 @@ impl
                             Instance {
                                 position: vec3(
                                     i.0 as _, i.1 as _, i.2 as _,
-                                ) * 0.6,
+                                ) * 0.5,
                                 rotation: Quaternion::zero(),
                                 color: vec4(
                                     *c as f32 / GameOfLife::MAX_STATE as f32,

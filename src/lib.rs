@@ -3,6 +3,7 @@ mod environment;
 mod game_of_life;
 mod instance;
 mod model;
+mod rule;
 mod texture;
 
 use std::time::Instant;
@@ -12,8 +13,9 @@ use environment::Environment;
 use game_of_life::GameOfLife;
 use model::{Model, Vertex};
 use pollster::FutureExt;
+use rule::{Neighborhood, Rule};
 use wgpu::{
-    include_wgsl, BindGroup, BlendState, ColorTargetState, ColorWrites, CommandEncoderDescriptor,
+    include_wgsl, BlendState, ColorTargetState, ColorWrites, CommandEncoderDescriptor,
     DepthBiasState, DepthStencilState, Device, FragmentState, MultisampleState, Operations,
     PipelineLayout, PipelineLayoutDescriptor, PrimitiveState, PrimitiveTopology, RenderPipeline,
     RenderPipelineDescriptor, ShaderModule, StencilState, SurfaceConfiguration,
@@ -25,7 +27,7 @@ use winit::{
     window::{Window, WindowBuilder},
 };
 
-const SIZE: usize = 32;
+const SIZE: usize = 100;
 
 pub fn run() {
     let mut timer = Instant::now();
@@ -113,8 +115,8 @@ pub fn run() {
 
 struct State {
     env: environment::Environment,
-    texture_bind_group: BindGroup,
-    _texture: texture::Texture,
+    // texture_bind_group: BindGroup,
+    // _texture: texture::Texture,
     camera: Camera,
     model: Model,
     instances: instance::InstancesVec,
@@ -126,20 +128,28 @@ struct State {
 impl State {
     fn new(window: Window) -> Self {
         //* GOL
-        let gol = GameOfLife::new_random(SIZE);
+        let _clouds = Rule::from_closures(
+            1,
+            |n| (13..=26).contains(n),
+            |n| ((13..=14).contains(n) || (17..=19).contains(n)),
+            Neighborhood::MooreWrapping,
+        );
+        let gol = GameOfLife::new_random(
+            SIZE, _clouds,
+        );
         //* ENVIRONMENT
         let env = Environment::new(window).block_on();
 
-        //* TEXTURE
-        let diffuse_bytes = include_bytes!("uv_test.jpg");
-        let (texture, texture_bind_group_layout, texture_bind_group) =
-            texture::Texture::from_bytes(
-                &env.device,
-                &env.queue,
-                diffuse_bytes,
-                "Texture",
-            )
-            .unwrap();
+        // //* TEXTURE
+        // let diffuse_bytes = include_bytes!("uv_test.jpg");
+        // let (texture, texture_bind_group_layout, texture_bind_group) =
+        //     texture::Texture::from_bytes(
+        //         &env.device,
+        //         &env.queue,
+        //         diffuse_bytes,
+        //         "Texture",
+        //     )
+        //     .unwrap();
 
         //* CAMERA
         let (camera, camera_bind_group_layout) = Camera::create_camera(
@@ -164,7 +174,6 @@ impl State {
         let depth_texture = texture::Texture::create_depth_texture(
             &env.device,
             &env.config,
-            Some("Depth Texture"),
         );
         let shader = env
             .device
@@ -172,7 +181,9 @@ impl State {
         let render_pipeline_layout = env.device.create_pipeline_layout(
             &PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
-                bind_group_layouts: &[&texture_bind_group_layout, &camera_bind_group_layout],
+                bind_group_layouts: &[
+                    /* &texture_bind_group_layout, */ &camera_bind_group_layout,
+                ],
                 push_constant_ranges: &[],
             },
         );
@@ -185,8 +196,8 @@ impl State {
 
         Self {
             env,
-            texture_bind_group,
-            _texture: texture,
+            // texture_bind_group,
+            // _texture: texture,
             camera,
             model,
             instances,
@@ -265,7 +276,6 @@ impl State {
             self.depth_texture = texture::Texture::create_depth_texture(
                 &self.env.device,
                 &self.env.config,
-                Some("Depth Texture"),
             )
         }
     }
@@ -359,13 +369,13 @@ impl State {
                 },
             );
             render_pass.set_pipeline(&self.render_pipeline);
+            // render_pass.set_bind_group(
+            //     0,
+            //     &self.texture_bind_group,
+            //     &[],
+            // );
             render_pass.set_bind_group(
                 0,
-                &self.texture_bind_group,
-                &[],
-            );
-            render_pass.set_bind_group(
-                1,
                 &self.camera.bind_group,
                 &[],
             );

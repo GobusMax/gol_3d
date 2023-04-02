@@ -173,59 +173,59 @@ pub const CUBE_INDICES: &[u16] = &[
 
 ];
 
-const SQRT_3: f32 = 1.7320508;
-pub const CUBE_OLD: &[Vertex] = &[
+const _SQRT_3: f32 = 1.7320508;
+pub const _CUBE_OLD: &[Vertex] = &[
     //0
     Vertex {
         position: [0., 0., 0.],
         tex_coords: [0., 0.],
-        normal: [-SQRT_3, -SQRT_3, -SQRT_3],
+        normal: [-_SQRT_3, -_SQRT_3, -_SQRT_3],
     },
     //1
     Vertex {
         position: [0., 0., 1.],
         tex_coords: [0., 1.],
-        normal: [-SQRT_3, -SQRT_3, SQRT_3],
+        normal: [-_SQRT_3, -_SQRT_3, _SQRT_3],
     },
     //2
     Vertex {
         position: [0., 1., 0.],
         tex_coords: [1., 0.],
-        normal: [-SQRT_3, SQRT_3, -SQRT_3],
+        normal: [-_SQRT_3, _SQRT_3, -_SQRT_3],
     },
     //3
     Vertex {
         position: [0., 1., 1.],
         tex_coords: [1., 1.],
-        normal: [-SQRT_3, SQRT_3, SQRT_3],
+        normal: [-_SQRT_3, _SQRT_3, _SQRT_3],
     },
     //4
     Vertex {
         position: [1., 0., 0.],
         tex_coords: [0., 1.],
-        normal: [SQRT_3, -SQRT_3, -SQRT_3],
+        normal: [_SQRT_3, -_SQRT_3, -_SQRT_3],
     },
     //5
     Vertex {
         position: [1., 0., 1.],
         tex_coords: [0., 0.],
-        normal: [SQRT_3, -SQRT_3, SQRT_3],
+        normal: [_SQRT_3, -_SQRT_3, _SQRT_3],
     },
     //6
     Vertex {
         position: [1., 1., 0.],
         tex_coords: [1., 1.],
-        normal: [SQRT_3, SQRT_3, -SQRT_3],
+        normal: [_SQRT_3, _SQRT_3, -_SQRT_3],
     },
     //7
     Vertex {
         position: [1., 1., 1.],
         tex_coords: [1., 0.],
-        normal: [SQRT_3, SQRT_3, SQRT_3],
+        normal: [_SQRT_3, _SQRT_3, _SQRT_3],
     },
 ];
 #[rustfmt::skip]
-pub const CUBE_INDICES_OLD: &[u16] = &[
+pub const _CUBE_INDICES_OLD: &[u16] = &[
     0, 1, 2, 
     3, 2, 1, 
     

@@ -12,11 +12,7 @@ pub struct Texture {
 impl Texture {
     pub const DEPTH_FORMAT: wgpu::TextureFormat = TextureFormat::Depth32Float;
 
-    pub fn create_depth_texture(
-        device: &Device,
-        config: &SurfaceConfiguration,
-        label: Option<&str>,
-    ) -> Self {
+    pub fn create_depth_texture(device: &Device, config: &SurfaceConfiguration) -> Self {
         let size = Extent3d {
             width: config.width,
             height: config.height,
@@ -24,7 +20,7 @@ impl Texture {
         };
         let texture = device.create_texture(
             &TextureDescriptor {
-                label,
+                label: Some("Depth Texture"),
                 size,
                 mip_level_count: 1,
                 sample_count: 1,
@@ -57,7 +53,7 @@ impl Texture {
         }
     }
 
-    pub fn from_bytes(
+    pub fn _from_bytes(
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         bytes: &[u8],
@@ -69,7 +65,7 @@ impl Texture {
     )> {
         let img = image::load_from_memory(bytes)?;
         Ok(
-            Self::from_image(
+            Self::_from_image(
                 device,
                 queue,
                 &img,
@@ -77,7 +73,7 @@ impl Texture {
             ),
         )
     }
-    pub fn from_image(
+    pub fn _from_image(
         device: &Device,
         queue: &Queue,
         image: &DynamicImage,
