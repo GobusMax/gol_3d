@@ -253,20 +253,18 @@ pub struct Model {
 
 impl Model {
     pub fn new(device: &Device, vertices: &[Vertex], indices: &[u16]) -> Self {
-        let vertex_buffer = device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
+        let vertex_buffer =
+            device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("Vertex Buffer"),
                 contents: bytemuck::cast_slice(vertices),
                 usage: BufferUsages::VERTEX,
-            },
-        );
-        let index_buffer = device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
+            });
+        let index_buffer =
+            device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("Index Buffer"),
                 contents: bytemuck::cast_slice(indices),
                 usage: BufferUsages::INDEX,
-            },
-        );
+            });
 
         Self {
             vertex_buffer,
@@ -295,12 +293,14 @@ impl Vertex {
                     format: wgpu::VertexFormat::Float32x3,
                 },
                 wgpu::VertexAttribute {
-                    offset: std::mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
+                    offset: std::mem::size_of::<[f32; 3]>()
+                        as wgpu::BufferAddress,
                     shader_location: 1,
                     format: wgpu::VertexFormat::Float32x2,
                 },
                 wgpu::VertexAttribute {
-                    offset: std::mem::size_of::<[f32; 5]>() as wgpu::BufferAddress,
+                    offset: std::mem::size_of::<[f32; 5]>()
+                        as wgpu::BufferAddress,
                     shader_location: 2,
                     format: wgpu::VertexFormat::Float32x3,
                 },

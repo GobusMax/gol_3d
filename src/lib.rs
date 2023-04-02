@@ -126,7 +126,7 @@ impl State {
         //* GOL
 
         let rule = cool_rules::as_rule::GLIDER_HEAVEN;
-        // let rule = cool_rules::as_str::SHELLS.parse::<Rule>().unwrap();
+        // let rule = cool_rules::as_str::SHELLS.parse::<Rule>().urnwrap();
 
         let gol = GameOfLife {
             cells: GameOfLife::new_random_preset(rule.max_state),

@@ -1,4 +1,7 @@
-use wgpu::{Backends, Features, InstanceDescriptor, Limits, SurfaceConfiguration, TextureUsages};
+use wgpu::{
+    Backends, Features, InstanceDescriptor, Limits, SurfaceConfiguration,
+    TextureUsages,
+};
 use winit::window::Window;
 
 pub struct Environment {
@@ -13,22 +16,18 @@ pub struct Environment {
 impl Environment {
     pub async fn new(window: Window) -> Self {
         let size = window.inner_size();
-        let instance = wgpu::Instance::new(
-            InstanceDescriptor {
-                backends: Backends::VULKAN,
-                ..Default::default()
-            },
-        );
+        let instance = wgpu::Instance::new(InstanceDescriptor {
+            backends: Backends::VULKAN,
+            ..Default::default()
+        });
         let surface = unsafe { instance.create_surface(&window).unwrap() };
 
         let adapter = instance
-            .request_adapter(
-                &wgpu::RequestAdapterOptionsBase {
-                    power_preference: wgpu::PowerPreference::HighPerformance,
-                    force_fallback_adapter: false,
-                    compatible_surface: Some(&surface),
-                },
-            )
+            .request_adapter(&wgpu::RequestAdapterOptionsBase {
+                power_preference: wgpu::PowerPreference::HighPerformance,
+                force_fallback_adapter: false,
+                compatible_surface: Some(&surface),
+            })
             .await
             .unwrap();
         let (device, queue) = adapter

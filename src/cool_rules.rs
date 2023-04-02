@@ -42,4 +42,10 @@ pub mod as_rule {
         max_state: 2,
         neighborhood: Neighborhood::Moore,
     };
+    pub const PERIODIC_FUNKY: Rule = Rule {
+        survive_mask: 0b01111000000011000100000001000010,
+        born_mask: 0b11101011011001101100000010010000,
+        max_state: 4,
+        neighborhood: Neighborhood::Moore,
+    };
 }
