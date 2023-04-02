@@ -1,9 +1,11 @@
 mod camera;
+mod cool_rules;
 mod environment;
 mod game_of_life;
 mod instance;
 mod model;
 mod rule;
+mod rule_parse;
 mod texture;
 
 use std::time::Instant;
@@ -124,38 +126,13 @@ struct State {
 impl State {
     fn new(window: Window) -> Self {
         //* GOL
-        let shells = ("3,5,7,9,11,15,17,19,21,23-24,26/3,6,8-9,11,14-17,19,24/7/M")
-            .parse::<Rule>()
-            .unwrap();
-        let crystal_growth = ("0-6/1,3/2/NNW").parse::<Rule>().unwrap();
-        let clouds2 = "12-26/13-14/2/M".parse::<Rule>().unwrap();
-        let dodec = Rule {
-            survive_mask: 0b00010000101000110110100001000010,
-            born_mask: 0b10100110001110111001000011111000,
-            max_state: 1,
-            neighborhood: rule::Neighborhood::MooreWrapping,
-        };
-        let wavy_explosion = Rule {
-            survive_mask: 0b01110101000100101010001010011110,
-            born_mask: 0b01001011101111001000101011001000,
-            max_state: 4,
-            neighborhood: rule::Neighborhood::MooreWrapping,
-        };
-        let labyrinth_box = Rule {
-            survive_mask: 0b01001111100100001010101100100000,
-            born_mask: 0b00001111000101000101100000011110,
-            max_state: 4,
-            neighborhood: rule::Neighborhood::MooreWrapping,
-        };
-        let city_builer = Rule {
-            survive_mask: 0b10111011110010111010111000011110,
-            born_mask: 0b01010010000011010101001001110000,
-            max_state: 4,
-            neighborhood: rule::Neighborhood::MooreWrapping,
-        }; // restart often
+
+        let rule = cool_rules::as_rule::GLIDER_HEAVEN;
+        // let rule = cool_rules::as_str::SHELLS.parse::<Rule>().unwrap();
+
         let gol = GameOfLife {
-            cells: GameOfLife::new_random_preset(dodec.max_state),
-            rule: dodec,
+            cells: GameOfLife::new_random_preset(rule.max_state),
+            rule,
         };
         //* ENVIRONMENT
         let env = Environment::new(window).block_on();
@@ -304,7 +281,7 @@ impl State {
                 return true;
             }
             WindowEvent::KeyboardInput { input, .. }
-                if input.virtual_keycode == Some(VirtualKeyCode::P)
+                if input.virtual_keycode == Some(VirtualKeyCode::Tab)
                     && input.state == ElementState::Released =>
             {
                 self.paused = !self.paused;

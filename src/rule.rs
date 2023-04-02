@@ -2,13 +2,16 @@ use std::{ops::RangeInclusive, str::FromStr, fmt::Display};
 
 use ndarray::Array3;
 use ndarray_rand::rand;
+use nom::Finish;
+
+use crate::rule_parse;
 
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub enum Neighborhood {
-    Moore,
+    MooreNonWrapping,
     MooreWrapping,
-    VonNeumann,
+    VonNeumannNonWrapping,
     VonNeumannWrapping,
 }
 
@@ -54,13 +57,13 @@ impl Rule {
         ),
     ) -> u8 {
         match self.neighborhood {
-            Neighborhood::Moore => self.moore_neighborhood(
+            Neighborhood::MooreNonWrapping => self.moore_neighborhood(
                 cells, index,
             ),
             Neighborhood::MooreWrapping => self.moore_neighborhood_wrapping(
                 cells, index,
             ),
-            Neighborhood::VonNeumann => self.von_neumann_neigborhood2(
+            Neighborhood::VonNeumannNonWrapping => self.von_neumann_neigborhood2(
                 cells, index,
             ),
             Neighborhood::VonNeumannWrapping => todo!(),
@@ -127,6 +130,7 @@ impl Rule {
         }
         sum
     }
+
     fn moore_neighborhood_wrapping(
         &self,
         cells: &Array3<u8>,
@@ -159,6 +163,7 @@ impl Rule {
         }
         sum
     }
+    
     #[rustfmt::skip]
     fn von_neumann_neigborhood2(
         &self,
@@ -178,6 +183,7 @@ impl Rule {
         + ((index.1 > 0         && cells[(index.0,index.1 - 1,index.2)] == self.max_state) as u8)
         + ((index.2 > 0         && cells[(index.0,index.1,index.2 - 1)] == self.max_state) as u8)
     }
+    
     #[rustfmt::skip]
     fn von_neumann_neigborhood(
         &self,
@@ -201,37 +207,28 @@ impl Rule {
         sum
     }
 }
+
 impl Display for Rule{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Rule{{\nsurvive_mask: {:#034b},\nborn_mask:    {:#034b},\nmax_state: {},\nneighborhood: rule::Neighborhood::{:?}\n}};",self.survive_mask,self.born_mask,self.max_state,self.neighborhood)
+        write!(f, "Rule{{survive_mask: {:#034b}, born_mask: {:#034b}, max_state:{}, neighborhood: rule::Neighborhood::{:?}}};",
+            self.survive_mask,
+            self.born_mask,
+            self.max_state,
+            self.neighborhood)
     }
 }
-#[derive(Debug, PartialEq, Eq)]
-pub struct ParseRuleError;
+
 impl FromStr for Rule {
-    type Err = ParseRuleError;
+    type Err = nom::error::Error<String>;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let parts: Vec<&str> = s.split('/').collect();
-        let survive_mask = parts[0].to_bit_mask();
-        let born_mask = parts[1].to_bit_mask();
-
-        let max_state = parts[2].parse::<u8>().unwrap() - 1;
-        let neighborhood: Neighborhood = match parts[3] {
-            "M" => Neighborhood::MooreWrapping,
-            "MNW" => Neighborhood::Moore,
-            "N" => Neighborhood::VonNeumannWrapping,
-            "NNW" => Neighborhood::VonNeumann,
-            _ => return Err(ParseRuleError),
-        };
-        Ok(
-            Self {
-                survive_mask,
-                born_mask,
-                max_state,
-                neighborhood,
-            },
-        )
+        match rule_parse::rule(s).finish() {
+            Ok((_,r)) => Ok(r),
+            Err(nom::error::Error {input, code}) => Err(nom::error::Error {
+                input: input.to_string(),
+                code,
+            }),
+        }
     }
 }
 
