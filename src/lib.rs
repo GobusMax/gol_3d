@@ -94,10 +94,10 @@ pub fn run() {
                         e
                     ),
                 }
-                println!(
-                    "{}",
-                    1. / delta
-                )
+                // println!(
+                //     "{}",
+                //     1. / delta
+                // )
             }
             Event::MainEventsCleared => {
                 state.env.window.request_redraw();
@@ -128,28 +128,19 @@ struct State {
 impl State {
     fn new(window: Window) -> Self {
         //* GOL
-        let _clouds = Rule::from_closures(
-            1,
-            |n| (13..=26).contains(n),
-            |n| ((13..=14).contains(n) || (17..=19).contains(n)),
-            Neighborhood::MooreWrapping,
-        );
-        let gol = GameOfLife::new_random(
-            SIZE, _clouds,
-        );
+        let shells = ("3,5,7,9,11,15,17,19,21,23-24,26/3,6,8-9,11,14-17,19,24/7/M")
+            .parse::<Rule>()
+            .unwrap();
+        let gol = GameOfLife {
+            cells: GameOfLife::new_random_partial(
+                SIZE,
+                SIZE / 2,
+                shells.max_state,
+            ),
+            rule: shells,
+        };
         //* ENVIRONMENT
         let env = Environment::new(window).block_on();
-
-        // //* TEXTURE
-        // let diffuse_bytes = include_bytes!("uv_test.jpg");
-        // let (texture, texture_bind_group_layout, texture_bind_group) =
-        //     texture::Texture::from_bytes(
-        //         &env.device,
-        //         &env.queue,
-        //         diffuse_bytes,
-        //         "Texture",
-        //     )
-        //     .unwrap();
 
         //* CAMERA
         let (camera, camera_bind_group_layout) = Camera::create_camera(
@@ -299,6 +290,25 @@ impl State {
                     && input.state == ElementState::Released =>
             {
                 self.paused = !self.paused;
+                return true;
+            }
+            WindowEvent::KeyboardInput { input, .. }
+                if input.virtual_keycode == Some(VirtualKeyCode::R)
+                    && input.state == ElementState::Released =>
+            {
+                self.gol = GameOfLife {
+                    cells: GameOfLife::new_random_partial(
+                        SIZE,
+                        SIZE / 2,
+                        self.gol.rule.max_state,
+                    ),
+                    rule: self.gol.rule.clone(),
+                };
+                self.instances = (
+                    &self.gol,
+                    &self.env.device,
+                )
+                    .into();
                 return true;
             }
             _ => (),

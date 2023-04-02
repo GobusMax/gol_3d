@@ -46,7 +46,7 @@ impl
                                 ) * 0.5,
                                 rotation: Quaternion::zero(),
                                 color: vec4(
-                                    *c as f32 / GameOfLife::MAX_STATE as f32,
+                                    *c as f32 / gol.rule.max_state as f32,
                                     0.,
                                     0.,
                                     1.,

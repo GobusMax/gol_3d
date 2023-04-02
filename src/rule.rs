@@ -1,5 +1,8 @@
+use std::{ops::RangeInclusive, str::FromStr};
+
 use ndarray::Array3;
 
+#[allow(dead_code)]
 #[derive(Clone)]
 pub enum Neighborhood {
     Moore,
@@ -9,41 +12,32 @@ pub enum Neighborhood {
 }
 #[derive(Clone)]
 pub struct Rule {
+    pub survive_mask: u32,
+    pub born_mask: u32,
     pub max_state: u8,
-    pub survive_mask: [u8; 4],
-    pub born_mask: [u8; 4],
     pub neighborhood: Neighborhood,
 }
 
 impl Rule {
-    pub fn from_closures(
+    pub fn new<T: ToBitMask, U: ToBitMask>(
+        survive: T,
+        born: U,
         max_state: u8,
-        survive_fn: fn(&u8) -> bool,
-        born_fn: fn(&u8) -> bool,
         neighborhood: Neighborhood,
     ) -> Self {
-        let mut survive = [0; 4];
-        let mut born = [0; 4];
-        for i in 0..=27 {
-            if survive_fn(&i) {
-                survive[(i / 8) as usize] += 1 << (i % 8);
-            }
-            if born_fn(&i) {
-                born[(i / 8) as usize] += 1 << (i % 8);
-            }
-        }
         Self {
+            survive_mask: survive.to_bit_mask(),
+            born_mask: born.to_bit_mask(),
             max_state,
-            survive_mask: survive,
-            born_mask: born,
             neighborhood,
         }
     }
+
     pub fn survive(&self, count: u8) -> bool {
-        self.survive_mask[(count / 8) as usize] & (1 << (count % 8)) != 0
+        self.survive_mask & (1 << count) != 0
     }
     pub fn born(&self, count: u8) -> bool {
-        self.born_mask[(count / 8) as usize] & (1 << (count % 8)) != 0
+        self.born_mask & (1 << count) != 0
     }
     pub fn count_neighbors(
         &self,
@@ -68,7 +62,7 @@ impl Rule {
         }
     }
 
-    fn moore_neighborhood(
+    fn _moore_neighborhood_old(
         &self,
         cells: &Array3<u8>,
         index: (
@@ -89,6 +83,44 @@ impl Rule {
             .map(|c| (*c == self.max_state) as u8)
             .sum()
             - ((cells[index] == self.max_state) as u8)
+    }
+    fn moore_neighborhood(
+        &self,
+        cells: &Array3<u8>,
+        index: (
+            usize,
+            usize,
+            usize,
+        ),
+    ) -> u8 {
+        let dim = cells.dim();
+        let mut sum = 0;
+        for x in -1..=1 {
+            if index.0.checked_add_signed(x).unwrap_or(dim.0) < dim.0 {
+                for y in -1..=1 {
+                    if index.1.checked_add_signed(y).unwrap_or(dim.1) < dim.1 {
+                        for z in -1..=1 {
+                            if index.2.checked_add_signed(z).unwrap_or(dim.2) < dim.2 {
+                                let new_index = (
+                                    (index.0).wrapping_add_signed(x),
+                                    (index.1).wrapping_add_signed(y),
+                                    (index.2).wrapping_add_signed(z),
+                                );
+                                if (
+                                    x, y, z,
+                                ) != (
+                                    0, 0, 0,
+                                ) && cells[new_index] == self.max_state
+                                {
+                                    sum += 1;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        sum
     }
     fn moore_neighborhood_wrapping(
         &self,
@@ -123,6 +155,7 @@ impl Rule {
         sum
     }
     // ! TODO
+    #[allow(unused_variables)]
     fn von_neumann_neigborhood(
         &self,
         cells: &Array3<u8>,
@@ -144,5 +177,82 @@ impl Rule {
             0
         };
         todo!()
+    }
+}
+#[derive(Debug, PartialEq, Eq)]
+pub struct ParseRuleError;
+impl FromStr for Rule {
+    type Err = ParseRuleError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let parts: Vec<&str> = s.split('/').collect();
+        let survive_mask = parts[0].to_bit_mask();
+        let born_mask = parts[1].to_bit_mask();
+
+        let max_state = parts[2].parse::<u8>().unwrap() - 1;
+        let neighborhood: Neighborhood = match parts[3] {
+            "M" => Neighborhood::Moore,
+            "MW" => Neighborhood::MooreWrapping,
+            "N" => Neighborhood::VonNeumann,
+            "NW" => Neighborhood::VonNeumannWrapping,
+            _ => return Err(ParseRuleError),
+        };
+        Ok(
+            Self {
+                survive_mask,
+                born_mask,
+                max_state,
+                neighborhood,
+            },
+        )
+    }
+}
+
+pub trait ToBitMask {
+    fn to_bit_mask(self) -> u32;
+}
+impl ToBitMask for RangeInclusive<u8> {
+    fn to_bit_mask(self) -> u32 {
+        let mut mask = 0;
+        for i in self {
+            mask |= 1 << i;
+        }
+        mask
+    }
+}
+impl<F> ToBitMask for F
+where
+    F: Fn(u8) -> bool,
+{
+    fn to_bit_mask(self) -> u32 {
+        let mut mask = 0;
+        for i in 0..=27 {
+            if self(i) {
+                mask |= 1 << i;
+            }
+        }
+        mask
+    }
+}
+impl ToBitMask for u8 {
+    fn to_bit_mask(self) -> u32 {
+        1 << self
+    }
+}
+impl ToBitMask for &str {
+    fn to_bit_mask(self) -> u32 {
+        let mut mask = 0;
+        for p in self.split(',') {
+            if p.contains('-') {
+                let mut split = p.split('-');
+                let range = (split.next().unwrap().parse::<u8>().unwrap()
+                    ..=split.next().unwrap().parse::<u8>().unwrap())
+                    .to_bit_mask();
+                mask |= range;
+            } else if !p.is_empty() {
+                mask |= 1 << p.parse::<u8>().unwrap();
+            }
+        }
+        mask
     }
 }

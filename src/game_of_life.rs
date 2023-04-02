@@ -5,44 +5,52 @@ use crate::rule::Rule;
 
 pub struct GameOfLife {
     pub cells: Array3<u8>,
-    rule: Rule,
+    pub rule: Rule,
 }
 
 impl GameOfLife {
-    pub const MAX_STATE: u8 = 1;
-    pub fn new_random(size: usize, rule: Rule) -> Self {
-        let cells = Array3::<u8>::random(
+    #[allow(dead_code)]
+    pub fn new_random_full(size: usize, max_state: u8) -> Array3<u8> {
+        Array3::<u8>::random(
             (
                 size, size, size,
             ),
             ndarray_rand::rand_distr::Uniform::new(
                 0, 2,
             ),
-        );
-
-        // cells
-        //     .slice_mut(
-        //         s![
-        //             (size * 3 / 8)..(size * 5 / 8),
-        //             (size * 3 / 8)..(size * 5 / 8),
-        //             (size * 3 / 8)..(size * 5 / 8)
-        //         ],
-        //     )
-        //     .assign(
-        //         &Array3::<u8>::random(
-        //             (
-        //                 size / 4,
-        //                 size / 4,
-        //                 size / 4,
-        //             ),
-        //             ndarray_rand::rand_distr::Uniform::new(
-        //                 0, 2,
-        //             ),
-        //         )
-        //         .map(|v| v * Self::MAX_STATE),
-        //     );
-        Self { cells, rule }
+        )
+        .map(|v| v * max_state)
     }
+    pub fn new_random_partial(size: usize, partial_size: usize, max_state: u8) -> Array3<u8> {
+        let mut cells = Array3::<u8>::zeros(
+            (
+                size, size, size,
+            ),
+        );
+        cells
+            .slice_mut(
+                ndarray::s![
+                    ((size - partial_size) / 2)..((size + partial_size) / 2),
+                    ((size - partial_size) / 2)..((size + partial_size) / 2),
+                    ((size - partial_size) / 2)..((size + partial_size) / 2),
+                ],
+            )
+            .assign(
+                &Array3::<u8>::random(
+                    (
+                        partial_size,
+                        partial_size,
+                        partial_size,
+                    ),
+                    ndarray_rand::rand_distr::Uniform::new(
+                        0, 2,
+                    ),
+                )
+                .map(|v| v * max_state),
+            );
+        cells
+    }
+    #[allow(dead_code)]
     pub fn new_single(size: usize, rule: Rule) -> Self {
         let mut cells = Array3::<u8>::zeros(
             (
@@ -52,22 +60,22 @@ impl GameOfLife {
         let half = size / 2;
         cells[(
             half, half, half,
-        )] = Self::MAX_STATE;
+        )] = rule.max_state;
         cells[(
             half + 1,
             half,
             half,
-        )] = Self::MAX_STATE;
+        )] = rule.max_state;
         cells[(
             half,
             half + 1,
             half,
-        )] = Self::MAX_STATE;
+        )] = rule.max_state;
         cells[(
             half + 1,
             half + 1,
             half,
-        )] = Self::MAX_STATE;
+        )] = rule.max_state;
         Self { cells, rule }
     }
 
