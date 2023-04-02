@@ -45,9 +45,9 @@ pub fn rule(input: &str) -> IResult<&str, Rule> {
             character::complete::u8,
             tag("/"),
             alt((
-                value(Neighborhood::MooreWrapping, tag("M")),
+                value(Neighborhood::Moore, tag("M")),
                 value(Neighborhood::MooreNonWrapping, tag("MN")),
-                value(Neighborhood::VonNeumannWrapping, tag("N")),
+                value(Neighborhood::VonNeumann, tag("N")),
                 value(Neighborhood::VonNeumannNonWrapping, tag("NN")),
             )),
         )),

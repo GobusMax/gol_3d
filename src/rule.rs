@@ -1,20 +1,34 @@
-use std::{ops::RangeInclusive, str::FromStr, fmt::Display};
+use std::{fmt::Display, ops::RangeInclusive, str::FromStr};
 
 use ndarray::Array3;
-use ndarray_rand::rand;
+use ndarray_rand::{
+    rand::{self, Rng},
+    rand_distr::{Distribution, Standard},
+};
 use nom::Finish;
 
 use crate::rule_parse;
 
 #[allow(dead_code)]
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub enum Neighborhood {
+    Moore,
     MooreNonWrapping,
-    MooreWrapping,
+    VonNeumann,
     VonNeumannNonWrapping,
-    VonNeumannWrapping,
 }
 
+impl Distribution<Neighborhood> for Standard {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Neighborhood {
+        match rng.gen_range(0..=3) {
+            0 => Neighborhood::Moore,
+            1 => Neighborhood::MooreNonWrapping,
+            2 => Neighborhood::VonNeumann,
+            3 => Neighborhood::VonNeumannNonWrapping,
+            _ => Neighborhood::Moore,
+        }
+    }
+}
 pub struct Rule {
     pub survive_mask: u32,
     pub born_mask: u32,
@@ -37,9 +51,14 @@ impl Rule {
             neighborhood,
         }
     }
-    pub fn new_random() -> Self{
-
-        Self { survive_mask: rand::random::<u32>() & (u32::MAX-1), born_mask:rand::random::<u32>() & (u32::MAX-1), max_state:rand::random::<u8>()/64 + 1, neighborhood: Neighborhood::MooreWrapping }
+    pub fn new_random() -> Self {
+        Self {
+            survive_mask: rand::random::<u32>() & (u32::MAX - 1),
+            born_mask: rand::random::<u32>() & (u32::MAX - 1),
+            max_state: rand::random::<u8>() / 64 + 1,
+            neighborhood: rand::thread_rng()
+                .sample(rand::distributions::Standard),
+        }
     }
     pub fn survive(&self, count: u8) -> bool {
         self.survive_mask & (1 << count) != 0
@@ -50,56 +69,25 @@ impl Rule {
     pub fn count_neighbors(
         &self,
         cells: &Array3<u8>,
-        index: (
-            usize,
-            usize,
-            usize,
-        ),
+        idx: (usize, usize, usize),
     ) -> u8 {
         match self.neighborhood {
-            Neighborhood::MooreNonWrapping => self.moore_neighborhood(
-                cells, index,
-            ),
-            Neighborhood::MooreWrapping => self.moore_neighborhood_wrapping(
-                cells, index,
-            ),
-            Neighborhood::VonNeumannNonWrapping => self.von_neumann_neigborhood2(
-                cells, index,
-            ),
-            Neighborhood::VonNeumannWrapping => todo!(),
+            Neighborhood::MooreNonWrapping => {
+                self.moore_neighborhood(cells, idx)
+            }
+            Neighborhood::Moore => self.moore_neighborhood_wrapping(cells, idx),
+            Neighborhood::VonNeumannNonWrapping => {
+                self.von_neumann_neigborhood(cells, idx)
+            }
+            Neighborhood::VonNeumann => {
+                self.von_neumann_neigborhood_wrapping(cells, idx)
+            }
         }
-    }
-
-    fn _moore_neighborhood_old(
-        &self,
-        cells: &Array3<u8>,
-        index: (
-            usize,
-            usize,
-            usize,
-        ),
-    ) -> u8 {
-        let dim = cells.dim();
-        cells
-            .slice(
-                ndarray::s![
-                    (index.0.checked_sub(1).unwrap_or_default())..(index.0 + 2).min(dim.0),
-                    (index.1.checked_sub(1).unwrap_or_default())..(index.1 + 2).min(dim.1),
-                    (index.2.checked_sub(1).unwrap_or_default())..(index.2 + 2).min(dim.2)
-                ],
-            )
-            .map(|c| (*c == self.max_state) as u8)
-            .sum()
-            - ((cells[index] == self.max_state) as u8)
     }
     fn moore_neighborhood(
         &self,
         cells: &Array3<u8>,
-        index: (
-            usize,
-            usize,
-            usize,
-        ),
+        index: (usize, usize, usize),
     ) -> u8 {
         let dim = cells.dim();
         let mut sum = 0;
@@ -108,17 +96,16 @@ impl Rule {
                 for y in -1..=1 {
                     if index.1.checked_add_signed(y).unwrap_or(dim.1) < dim.1 {
                         for z in -1..=1 {
-                            if index.2.checked_add_signed(z).unwrap_or(dim.2) < dim.2 {
+                            if index.2.checked_add_signed(z).unwrap_or(dim.2)
+                                < dim.2
+                            {
                                 let new_index = (
                                     (index.0).wrapping_add_signed(x),
                                     (index.1).wrapping_add_signed(y),
                                     (index.2).wrapping_add_signed(z),
                                 );
-                                if (
-                                    x, y, z,
-                                ) != (
-                                    0, 0, 0,
-                                ) && cells[new_index] == self.max_state
+                                if (x, y, z) != (0, 0, 0)
+                                    && cells[new_index] == self.max_state
                                 {
                                     sum += 1;
                                 }
@@ -134,11 +121,7 @@ impl Rule {
     fn moore_neighborhood_wrapping(
         &self,
         cells: &Array3<u8>,
-        index: (
-            usize,
-            usize,
-            usize,
-        ),
+        index: (usize, usize, usize),
     ) -> u8 {
         let dim = cells.dim();
         let mut sum = 0;
@@ -150,11 +133,8 @@ impl Rule {
                         (index.1 + dim.1).wrapping_add_signed(y) % dim.1,
                         (index.2 + dim.2).wrapping_add_signed(z) % dim.2,
                     );
-                    if (
-                        x, y, z,
-                    ) != (
-                        0, 0, 0,
-                    ) && cells[new_index] == self.max_state
+                    if (x, y, z) != (0, 0, 0)
+                        && cells[new_index] == self.max_state
                     {
                         sum += 1;
                     }
@@ -163,52 +143,81 @@ impl Rule {
         }
         sum
     }
-    
-    #[rustfmt::skip]
-    fn von_neumann_neigborhood2(
-        &self,
-        cells: &Array3<u8>,
-        index: (
-            usize,
-            usize,
-            usize,
-        ),
-    ) -> u8 {
-        let dim = cells.dim();
 
-          ((index.0 + 1 < dim.0 && cells[(index.0 + 1,index.1,index.2)] == self.max_state) as u8)
-        + ((index.1 + 1 < dim.1 && cells[(index.0,index.1 + 1,index.2)] == self.max_state) as u8)
-        + ((index.2 + 1 < dim.2 && cells[(index.0,index.1,index.2 + 1)] == self.max_state) as u8)
-        + ((index.0 > 0         && cells[(index.0 - 1,index.1,index.2)] == self.max_state) as u8)
-        + ((index.1 > 0         && cells[(index.0,index.1 - 1,index.2)] == self.max_state) as u8)
-        + ((index.2 > 0         && cells[(index.0,index.1,index.2 - 1)] == self.max_state) as u8)
-    }
-    
-    #[rustfmt::skip]
     fn von_neumann_neigborhood(
         &self,
         cells: &Array3<u8>,
-        index: (
-            usize,
-            usize,
-            usize,
-        ),
+        index: (usize, usize, usize),
     ) -> u8 {
         let dim = cells.dim();
         let mut sum = 0;
-        
-        if index.0 + 1 < dim.0 && cells[(index.0 + 1,index.1,index.2)] == self.max_state { sum += 1}
-        if index.1 + 1 < dim.1 && cells[(index.0,index.1 + 1,index.2)] == self.max_state { sum += 1}
-        if index.2 + 1 < dim.2 && cells[(index.0,index.1,index.2 + 1)] == self.max_state { sum += 1}
-        if index.0 > 0         && cells[(index.0 - 1,index.1,index.2)] == self.max_state { sum += 1}
-        if index.1 > 0         && cells[(index.0,index.1 - 1,index.2)] == self.max_state { sum += 1}
-        if index.2 > 0         && cells[(index.0,index.1,index.2 - 1)] == self.max_state { sum += 1}
 
+        if index.0 + 1 < dim.0
+            && cells[(index.0 + 1, index.1, index.2)] == self.max_state
+        {
+            sum += 1
+        }
+        if index.1 + 1 < dim.1
+            && cells[(index.0, index.1 + 1, index.2)] == self.max_state
+        {
+            sum += 1
+        }
+        if index.2 + 1 < dim.2
+            && cells[(index.0, index.1, index.2 + 1)] == self.max_state
+        {
+            sum += 1
+        }
+        if index.0 > 0
+            && cells[(index.0 - 1, index.1, index.2)] == self.max_state
+        {
+            sum += 1
+        }
+        if index.1 > 0
+            && cells[(index.0, index.1 - 1, index.2)] == self.max_state
+        {
+            sum += 1
+        }
+        if index.2 > 0
+            && cells[(index.0, index.1, index.2 - 1)] == self.max_state
+        {
+            sum += 1
+        }
+        sum
+    }
+    fn von_neumann_neigborhood_wrapping(
+        &self,
+        cells: &Array3<u8>,
+        idx: (usize, usize, usize),
+    ) -> u8 {
+        let dim = cells.dim();
+        let mut sum = 0;
+
+        if cells[((idx.0 + 1) % dim.0, idx.1, idx.2)] == self.max_state {
+            sum += 1
+        }
+        if cells[(idx.0, (idx.1 + 1) % dim.1, idx.2)] == self.max_state {
+            sum += 1
+        }
+        if cells[(idx.0, idx.1, (idx.2 + 1) % dim.2)] == self.max_state {
+            sum += 1
+        }
+        if cells[((idx.0 + dim.0 - 1) % dim.0, idx.1, idx.2)] == self.max_state
+        {
+            sum += 1
+        }
+        if cells[(idx.0, (idx.1 + dim.1 - 1) % dim.1, idx.2)] == self.max_state
+        {
+            sum += 1
+        }
+        if cells[(idx.0, idx.1, (idx.2 + dim.2 - 1) % dim.2)] == self.max_state
+        {
+            sum += 1
+        }
         sum
     }
 }
 
-impl Display for Rule{
+impl Display for Rule {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Rule{{survive_mask: {:#034b}, born_mask: {:#034b}, max_state:{}, neighborhood: rule::Neighborhood::{:?}}};",
             self.survive_mask,
@@ -223,8 +232,8 @@ impl FromStr for Rule {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match rule_parse::rule(s).finish() {
-            Ok((_,r)) => Ok(r),
-            Err(nom::error::Error {input, code}) => Err(nom::error::Error {
+            Ok((_, r)) => Ok(r),
+            Err(nom::error::Error { input, code }) => Err(nom::error::Error {
                 input: input.to_string(),
                 code,
             }),
