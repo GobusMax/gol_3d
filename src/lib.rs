@@ -27,8 +27,6 @@ use winit::{
     window::{Window, WindowBuilder},
 };
 
-const SIZE: usize = 100;
-
 pub fn run() {
     let mut timer = Instant::now();
     env_logger::init();
@@ -156,11 +154,7 @@ impl State {
             neighborhood: rule::Neighborhood::MooreWrapping,
         }; // restart often
         let gol = GameOfLife {
-            cells: GameOfLife::new_random_partial(
-                SIZE,
-                SIZE / 8,
-                dodec.max_state,
-            ),
+            cells: GameOfLife::new_random_preset(dodec.max_state),
             rule: dodec,
         };
         //* ENVIRONMENT
@@ -320,11 +314,7 @@ impl State {
                 if input.virtual_keycode == Some(VirtualKeyCode::R)
                     && input.state == ElementState::Released =>
             {
-                self.gol.cells = GameOfLife::new_random_partial(
-                    SIZE,
-                    SIZE / 4,
-                    self.gol.rule.max_state,
-                );
+                self.gol.cells = GameOfLife::new_random_preset(self.gol.rule.max_state);
                 self.instances = (
                     &self.gol,
                     &self.env.device,
@@ -337,11 +327,7 @@ impl State {
                     && input.state == ElementState::Released =>
             {
                 self.gol.rule = Rule::new_random();
-                self.gol.cells = GameOfLife::new_random_partial(
-                    SIZE,
-                    SIZE / 4,
-                    self.gol.rule.max_state,
-                );
+                self.gol.cells = GameOfLife::new_random_preset(self.gol.rule.max_state);
                 self.instances = (
                     &self.gol,
                     &self.env.device,

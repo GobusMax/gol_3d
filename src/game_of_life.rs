@@ -3,25 +3,14 @@ use ndarray_rand::RandomExt;
 
 use crate::rule::Rule;
 
+pub const SIZE: usize = 100;
 pub struct GameOfLife {
     pub cells: Array3<u8>,
     pub rule: Rule,
 }
 
 impl GameOfLife {
-    #[allow(dead_code)]
-    pub fn new_random_full(size: usize, max_state: u8) -> Array3<u8> {
-        Array3::<u8>::random(
-            (
-                size, size, size,
-            ),
-            ndarray_rand::rand_distr::Uniform::new(
-                0, 2,
-            ),
-        )
-        .map(|v| v * max_state)
-    }
-    pub fn new_random_partial(size: usize, partial_size: usize, max_state: u8) -> Array3<u8> {
+    pub fn new_random(size: usize, partial_size: usize, prob: f64, max_state: u8) -> Array3<u8> {
         let mut cells = Array3::<u8>::zeros(
             (
                 size, size, size,
@@ -36,19 +25,22 @@ impl GameOfLife {
                 ],
             )
             .assign(
-                &Array3::<u8>::random(
+                &Array3::<bool>::random(
                     (
                         partial_size,
                         partial_size,
                         partial_size,
                     ),
-                    ndarray_rand::rand_distr::Uniform::new(
-                        0, 2,
-                    ),
+                    ndarray_rand::rand_distr::Bernoulli::new(prob).unwrap(),
                 )
-                .map(|v| v * max_state),
+                .map(|v| (*v as u8) * max_state),
             );
         cells
+    }
+    pub fn new_random_preset(max_state: u8) -> Array3<u8> {
+        Self::new_random(
+            SIZE, 2, 1., max_state,
+        )
     }
     #[allow(dead_code)]
     pub fn new_single(size: usize, max_state: u8) -> Array3<u8> {
