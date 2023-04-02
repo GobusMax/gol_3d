@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 pub mod as_str {
     pub const SHELLS: &str =
         "3,5,7,9,11,15,17,19,21,23-24,26/3,6,8-9,11,14-17,19,24/7/M";
