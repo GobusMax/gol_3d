@@ -7,7 +7,7 @@ edition = "2021"
 
 
 [dependencies]
-image = { version = "0.24", features = ["png", "jpeg"] }
+# image = { version = "0.24", features = ["png", "jpeg"] }
 wgpu = "0.15"
 env_logger = "0.10"
 log = "0.4"
