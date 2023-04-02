@@ -2010,6 +2010,7 @@ dependencies = [
  "log",
  "ndarray",
  "ndarray-rand",
+ "nom",
  "pollster",
  "wgpu",
  "winit",
