@@ -1,14 +1,18 @@
-use cgmath::{perspective, prelude::*, Deg, Matrix3, Matrix4, Point3, Rad, Vector3};
+use cgmath::{
+    perspective, prelude::*, Deg, Matrix3, Matrix4, Point3, Rad, Vector3,
+};
 use wgpu::{
-    util::DeviceExt, BindGroup, BindGroupEntry, BindGroupLayout, BindGroupLayoutEntry, Buffer,
-    BufferUsages, Device, ShaderStages, SurfaceConfiguration,
+    util::DeviceExt, BindGroup, BindGroupEntry, BindGroupLayout,
+    BindGroupLayoutEntry, Buffer, BufferUsages, Device, ShaderStages,
+    SurfaceConfiguration,
 };
 use winit::event::*;
 
 use crate::game_of_life::SIZE;
 
 pub const OPENGL_TO_WGPU_MATRIX: Matrix4<f32> = Matrix4::new(
-    1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.0, 0.0, 0.0, 0.5, 1.0,
+    1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.0, 0.0, 0.0, 0.5,
+    1.0,
 );
 
 pub struct Camera {
@@ -23,23 +27,10 @@ impl Camera {
     pub fn create_camera(
         device: &Device,
         config: &SurfaceConfiguration,
-    ) -> (
-        Self,
-        BindGroupLayout,
-    ) {
+    ) -> (Self, BindGroupLayout) {
         let entity = CameraEntity {
-            pos: (
-                SIZE as f32,
-                SIZE as f32,
-                SIZE as f32,
-            )
-                .into(),
-            dir: Vector3::from(
-                (
-                    -1., -1., -1.,
-                ),
-            )
-            .normalize(),
+            pos: (SIZE as f32, SIZE as f32, SIZE as f32).into(),
+            dir: Vector3::from((-1., -1., -1.)).normalize(),
             up: cgmath::Vector3::unit_y(),
             aspect: config.width as f32 / config.height as f32,
             fovy: 45.0,
@@ -48,15 +39,14 @@ impl Camera {
         };
         let mut uniform = CameraUniform::new();
         uniform.update_view_proj(&entity);
-        let buffer = device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
+        let buffer =
+            device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("Camera Buffer"),
                 contents: bytemuck::cast_slice(&uniform.view_proj),
                 usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
-            },
-        );
-        let bind_group_layout = device.create_bind_group_layout(
-            &wgpu::BindGroupLayoutDescriptor {
+            });
+        let bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: Some("Camera Bind Group Layout"),
                 entries: &[BindGroupLayoutEntry {
                     binding: 0,
@@ -68,22 +58,16 @@ impl Camera {
                     },
                     count: None,
                 }],
-            },
-        );
-        let bind_group = device.create_bind_group(
-            &wgpu::BindGroupDescriptor {
-                label: Some("Camera Bind Groups"),
-                layout: &bind_group_layout,
-                entries: &[BindGroupEntry {
-                    binding: 0,
-                    resource: buffer.as_entire_binding(),
-                }],
-            },
-        );
-        let controller = CameraController::new(
-            SIZE as f32 * 1.,
-            0.001,
-        );
+            });
+        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Camera Bind Groups"),
+            layout: &bind_group_layout,
+            entries: &[BindGroupEntry {
+                binding: 0,
+                resource: buffer.as_entire_binding(),
+            }],
+        });
+        let controller = CameraController::new(SIZE as f32 * 1., 0.001);
 
         (
             Self {
@@ -98,10 +82,8 @@ impl Camera {
     }
 
     pub fn update(&mut self, delta: f32) {
-        self.controller.update_camera_entity(
-            &mut self.entity,
-            delta,
-        );
+        self.controller
+            .update_camera_entity(&mut self.entity, delta);
         self.uniform.update_view_proj(&self.entity);
     }
 }
@@ -117,15 +99,9 @@ pub struct CameraEntity {
 
 impl CameraEntity {
     pub fn build_view_projection_matrix(&self) -> Matrix4<f32> {
-        let view = Matrix4::look_to_rh(
-            self.pos, self.dir, self.up,
-        );
-        let proj = perspective(
-            Deg(self.fovy),
-            self.aspect,
-            self.znear,
-            self.zfar,
-        );
+        let view = Matrix4::look_to_rh(self.pos, self.dir, self.up);
+        let proj =
+            perspective(Deg(self.fovy), self.aspect, self.znear, self.zfar);
         OPENGL_TO_WGPU_MATRIX * proj * view
     }
 }
@@ -150,10 +126,7 @@ pub struct CameraController {
     is_backward_pressed: bool,
     is_left_pressed: bool,
     is_right_pressed: bool,
-    delta: (
-        f32,
-        f32,
-    ),
+    delta: (f32, f32),
 }
 
 impl CameraController {
@@ -164,9 +137,7 @@ impl CameraController {
             is_backward_pressed: false,
             is_left_pressed: false,
             is_right_pressed: false,
-            delta: (
-                0., 0.,
-            ),
+            delta: (0., 0.),
             sens,
         }
     }
@@ -208,16 +179,17 @@ impl CameraController {
     }
     pub fn process_mouse(&mut self, event: &DeviceEvent) -> bool {
         if let DeviceEvent::MouseMotion { delta } = event {
-            self.delta = (
-                delta.0 as f32,
-                delta.1 as f32,
-            );
+            self.delta = (delta.0 as f32, delta.1 as f32);
             true
         } else {
             false
         }
     }
-    pub fn update_camera_entity(&mut self, camera_entity: &mut CameraEntity, delta: f32) {
+    pub fn update_camera_entity(
+        &mut self,
+        camera_entity: &mut CameraEntity,
+        delta: f32,
+    ) {
         camera_entity.dir = camera_entity.dir.normalize();
         let yaw = Matrix3::from_angle_y(Rad(-self.delta.0) * self.sens);
         camera_entity.dir = yaw * camera_entity.dir;
@@ -226,9 +198,7 @@ impl CameraController {
             camera_entity.dir.cross(camera_entity.up).normalize(),
             -Rad(self.delta.1) * self.sens,
         );
-        self.delta = (
-            0., 0.,
-        );
+        self.delta = (0., 0.);
         let new_dir = pitch * camera_entity.dir;
         if camera_entity
             .dir
@@ -249,7 +219,9 @@ impl CameraController {
             camera_entity.pos -= forward
         }
 
-        let right = camera_entity.dir.cross(camera_entity.up).normalize() * self.speed * delta;
+        let right = camera_entity.dir.cross(camera_entity.up).normalize()
+            * self.speed
+            * delta;
 
         if self.is_right_pressed {
             camera_entity.pos += right;

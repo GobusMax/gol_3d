@@ -10,36 +10,42 @@ pub mod as_str {
 }
 
 pub mod as_rule {
-    use crate::rule::{Rule, Neighborhood};
+    use crate::rule::{Neighborhood, Rule};
 
     pub const DODEC: Rule = Rule {
         survive_mask: 0b00010000101000110110100001000010,
         born_mask: 0b10100110001110111001000011111000,
         max_state: 1,
-        neighborhood: Neighborhood::MooreWrapping,
+        neighborhood: Neighborhood::Moore,
     };
     pub const WAVY_EXPLOSION: Rule = Rule {
         survive_mask: 0b01110101000100101010001010011110,
         born_mask: 0b01001011101111001000101011001000,
         max_state: 4,
-        neighborhood: Neighborhood::MooreWrapping,
+        neighborhood: Neighborhood::Moore,
     };
     pub const LABYRINTH_BOX: Rule = Rule {
         survive_mask: 0b01001111100100001010101100100000,
         born_mask: 0b00001111000101000101100000011110,
         max_state: 4,
-        neighborhood: Neighborhood::MooreWrapping,
+        neighborhood: Neighborhood::Moore,
     };
     pub const CITY_BUILER: Rule = Rule {
         survive_mask: 0b10111011110010111010111000011110,
         born_mask: 0b01010010000011010101001001110000,
         max_state: 4,
-        neighborhood: Neighborhood::MooreWrapping,
+        neighborhood: Neighborhood::Moore,
     }; // ^ restart often
     pub const GLIDER_HEAVEN: Rule = Rule {
         survive_mask: 0b00110011011000101011110111001010,
         born_mask: 0b00110101010010101101011111010000,
         max_state: 2,
-        neighborhood: Neighborhood::MooreWrapping,
+        neighborhood: Neighborhood::Moore,
+    };
+    pub const PERIODIC_FUNKY: Rule = Rule {
+        survive_mask: 0b01111000000011000100000001000010,
+        born_mask: 0b11101011011001101100000010010000,
+        max_state: 4,
+        neighborhood: Neighborhood::Moore,
     };
 }

@@ -12,52 +12,34 @@ pub struct InstancesVec {
     pub buffer: Buffer,
 }
 
-impl
-    From<(
-        &GameOfLife,
-        &Device,
-    )> for InstancesVec
-{
-    fn from(
-        (gol, device): (
-            &GameOfLife,
-            &wgpu::Device,
-        ),
-    ) -> Self {
+impl From<(&GameOfLife, &Device)> for InstancesVec {
+    fn from((gol, device): (&GameOfLife, &wgpu::Device)) -> Self {
         let instances: Vec<Instance> = gol
             .cells
             .indexed_iter()
-            .filter_map(
-                |(i, c)| {
-                    if *c == 0 {
-                        None
-                    } else {
-                        Some(
-                            Instance {
-                                position: vec3(
-                                    i.0 as _, i.1 as _, i.2 as _,
-                                ) * 0.5,
-                                rotation: Quaternion::zero(),
-                                color: vec4(
-                                    *c as f32 / gol.rule.max_state as f32,
-                                    *c as f32 / gol.rule.max_state as f32,
-                                    *c as f32 / gol.rule.max_state as f32,
-                                    1.,
-                                ),
-                            },
-                        )
-                    }
-                },
-            )
+            .filter_map(|(i, c)| {
+                if *c == 0 {
+                    None
+                } else {
+                    Some(Instance {
+                        position: vec3(i.0 as _, i.1 as _, i.2 as _) * 0.5,
+                        rotation: Quaternion::zero(),
+                        color: vec4(
+                            *c as f32 / gol.rule.max_state as f32,
+                            *c as f32 / gol.rule.max_state as f32,
+                            *c as f32 / gol.rule.max_state as f32,
+                            1.,
+                        ),
+                    })
+                }
+            })
             .collect();
         let raw = instances.iter().map(RawInstance::new).collect::<Vec<_>>();
-        let buffer = device.create_buffer_init(
-            &BufferInitDescriptor {
-                label: Some("Instance Buffer"),
-                contents: bytemuck::cast_slice(&raw),
-                usage: BufferUsages::VERTEX,
-            },
-        );
+        let buffer = device.create_buffer_init(&BufferInitDescriptor {
+            label: Some("Instance Buffer"),
+            contents: bytemuck::cast_slice(&raw),
+            usage: BufferUsages::VERTEX,
+        });
         Self {
             data: instances,
             raw,
