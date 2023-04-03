@@ -87,8 +87,8 @@ pub fn rule_and_init(input: &str) -> IResult<&str, (Rule, Init)> {
                     neighborhood,
                 },
                 Init {
-                    size: init_size,
-                    density: init_density,
+                    size: init_size.unwrap_or(2),
+                    density: init_density.unwrap_or(1.),
                 },
             )
         },

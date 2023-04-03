@@ -43,19 +43,19 @@ struct Args {
 }
 
 pub struct Init {
-    pub size: Option<usize>,
-    pub density: Option<f64>,
+    pub size: usize,
+    pub density: f64,
 }
 
 pub struct State {
-    env: environment::Environment,
-    camera: Camera,
-    model: Model,
-    instances: instance::InstancesVec,
-    depth_texture: texture::Texture,
-    render_pipeline: RenderPipeline,
-    gol: GameOfLife,
-    paused: bool,
+    pub env: environment::Environment,
+    pub camera: Camera,
+    pub model: Model,
+    pub instances: instance::InstancesVec,
+    pub depth_texture: texture::Texture,
+    pub render_pipeline: RenderPipeline,
+    pub gol: GameOfLife,
+    pub paused: bool,
 }
 impl State {
     pub fn new(window: Window) -> Self {
@@ -81,8 +81,9 @@ impl State {
         // let rule = cool_rules::as_str::PERIODIC_FUNKY.parse::<Rule>().unwrap();
 
         let gol = GameOfLife {
-            cells: GameOfLife::cells_random_init(rule.max_state, init),
+            cells: GameOfLife::cells_random_init(rule.max_state, &init),
             rule,
+            init,
         };
         //* ENVIRONMENT
         let env = Environment::new(window).block_on();
@@ -215,8 +216,10 @@ impl State {
                 if input.virtual_keycode == Some(VirtualKeyCode::R)
                     && input.state == ElementState::Released =>
             {
-                self.gol.cells =
-                    GameOfLife::cells_random_preset(self.gol.rule.max_state);
+                self.gol.cells = GameOfLife::cells_random_init(
+                    self.gol.rule.max_state,
+                    &self.gol.init,
+                );
                 self.instances = (&self.gol, &self.env.device).into();
                 return true;
             }
@@ -225,8 +228,10 @@ impl State {
                     && input.state == ElementState::Released =>
             {
                 self.gol.rule = Rule::new_random();
-                self.gol.cells =
-                    GameOfLife::cells_random_preset(self.gol.rule.max_state);
+                self.gol.cells = GameOfLife::cells_random_init(
+                    self.gol.rule.max_state,
+                    &self.gol.init,
+                );
                 self.instances = (&self.gol, &self.env.device).into();
                 println!("{}", self.gol.rule);
                 return true;

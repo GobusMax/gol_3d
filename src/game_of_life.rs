@@ -7,6 +7,7 @@ pub const SIZE: usize = 100;
 pub struct GameOfLife {
     pub cells: Array3<u8>,
     pub rule: Rule,
+    pub init : Init,
 }
 
 impl GameOfLife {
@@ -33,11 +34,11 @@ impl GameOfLife {
         cells
     }
 
-    pub fn cells_random_init(max_state: u8, init: Init) -> Array3<u8> {
+    pub fn cells_random_init(max_state: u8, init: &Init) -> Array3<u8> {
         Self::cells_random(
             SIZE,
-            init.size.unwrap_or(SIZE / 2),
-            init.density.unwrap_or(0.5),
+            init.size,
+            init.density,
             max_state,
         )
     }
