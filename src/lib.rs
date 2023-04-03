@@ -78,6 +78,8 @@ impl State {
         // let rule = cool_rules::as_str::SHELLS.parse::<Rule>().urnwrap();
         // let rule = cool_rules::as_str::PERIODIC_FUNKY.parse::<Rule>().unwrap();
 
+        // println!("{}/{}/{}", rule, init.size, init.density);
+
         let gol = GameOfLife {
             cells: GameOfLife::cells_random_init(rule.max_state, &init),
             rule,

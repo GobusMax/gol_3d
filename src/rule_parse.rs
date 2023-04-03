@@ -51,17 +51,17 @@ pub fn rule_and_init(input: &str) -> IResult<&str, (Rule, Init)> {
     map(
         tuple((
             bitmask,
-            tag("/"),
-            bitmask,
-            tag("/"),
-            character::complete::u8,
-            tag("/"),
-            alt((
-                value(Neighborhood::Moore, tag("M")),
-                value(Neighborhood::MooreNonWrapping, tag("MN")),
-                value(Neighborhood::VonNeumann, tag("N")),
-                value(Neighborhood::VonNeumannNonWrapping, tag("NN")),
-            )),
+            preceded(tag("/"), bitmask),
+            preceded(tag("/"), map(character::complete::u8, |n| n - 1)),
+            preceded(
+                tag("/"),
+                alt((
+                    value(Neighborhood::MooreNonWrapping, tag("MN")),
+                    value(Neighborhood::VonNeumannNonWrapping, tag("NN")),
+                    value(Neighborhood::Moore, tag("M")),
+                    value(Neighborhood::VonNeumann, tag("N")),
+                )),
+            ),
             opt(preceded(
                 tag("/"),
                 map(character::complete::u64, |n| n as usize),
@@ -70,11 +70,8 @@ pub fn rule_and_init(input: &str) -> IResult<&str, (Rule, Init)> {
         )),
         |(
             survive_mask,
-            _,
             born_mask,
-            _,
             max_state,
-            _,
             neighborhood,
             init_size,
             init_density,
@@ -87,8 +84,8 @@ pub fn rule_and_init(input: &str) -> IResult<&str, (Rule, Init)> {
                     neighborhood,
                 },
                 Init {
-                    size: init_size.unwrap_or(2),
-                    density: init_density.unwrap_or(1.),
+                    size: init_size.unwrap_or(10),
+                    density: init_density.unwrap_or(0.5),
                 },
             )
         },

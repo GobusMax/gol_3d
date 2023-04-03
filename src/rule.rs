@@ -39,6 +39,8 @@ impl Distribution<Neighborhood> for Standard {
         }
     }
 }
+
+#[derive(Debug)]
 pub struct Rule {
     pub survive_mask: u32,
     pub born_mask: u32,
@@ -240,7 +242,7 @@ impl Display for Rule {
         //     "0b{:b}/0b{:b}/{}/{}",
         //     self.survive_mask,
         //     self.born_mask,
-        //     self.max_state,
+        //     self.max_state+1,
         //     self.neighborhood
         // )
         write!(
@@ -248,7 +250,7 @@ impl Display for Rule {
             "{}/{}/{}/{}",
             bit_run_string(self.survive_mask as u64),
             bit_run_string(self.born_mask as u64),
-            self.max_state,
+            self.max_state+1,
             self.neighborhood
         )
     }

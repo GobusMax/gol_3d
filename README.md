@@ -2,6 +2,8 @@
 
 A 3D Game Of Life capable of simulating arbitrary rules. Rendered with [wgpu](https://wgpu.rs/).
 
+![gol3d](screenshots.png)
+
 ## Run
 
 ```sh
