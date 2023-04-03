@@ -467,6 +467,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "gol_3d"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bytemuck",
+ "cgmath",
+ "env_logger",
+ "log",
+ "ndarray",
+ "ndarray-rand",
+ "nom",
+ "pollster",
+ "wgpu",
+ "winit",
+]
+
+[[package]]
 name = "gpu-alloc"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1696,23 +1713,6 @@ dependencies = [
  "bitflags",
  "js-sys",
  "web-sys",
-]
-
-[[package]]
-name = "wgpu_test"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bytemuck",
- "cgmath",
- "env_logger",
- "log",
- "ndarray",
- "ndarray-rand",
- "nom",
- "pollster",
- "wgpu",
- "winit",
 ]
 
 [[package]]
