@@ -20,7 +20,8 @@ use pollster::FutureExt;
 use rule::Rule;
 use wgpu::{
     include_wgsl, BlendState, ColorTargetState, ColorWrites,
-    CommandEncoderDescriptor, DepthBiasState, DepthStencilState, Device,
+    CommandEncoderDescriptor, ComputePassDescriptor, ComputePipeline,
+    ComputePipelineDescriptor, DepthBiasState, DepthStencilState, Device,
     FragmentState, MultisampleState, Operations, PipelineLayout,
     PipelineLayoutDescriptor, PrimitiveState, PrimitiveTopology,
     RenderPipeline, RenderPipelineDescriptor, ShaderModule, StencilState,
@@ -43,6 +44,7 @@ pub struct State {
     pub instances: instance::InstancesVec,
     pub depth_texture: texture::Texture,
     pub render_pipeline: RenderPipeline,
+    pub compute_pipeline: ComputePipeline,
     pub gol: GameOfLife,
     pub paused: bool,
 }
@@ -109,9 +111,12 @@ impl State {
             &env.device,
             &env.config,
             render_pipeline_layout,
-            shader,
+            &shader,
         );
 
+        let compute_pipeline =
+            Self::generate_compute_pipeline(&env.device, &shader);
+        println!("{:?}", env.device.limits());
         Self {
             env,
             camera,
@@ -119,28 +124,41 @@ impl State {
             instances,
             depth_texture,
             render_pipeline,
+            compute_pipeline,
             gol,
             paused: true,
         }
     }
-
+    fn generate_compute_pipeline(
+        device: &Device,
+        shader: &ShaderModule,
+    ) -> ComputePipeline {
+        let compute_pipeline_layout =
+            device.create_pipeline_layout(&PipelineLayoutDescriptor {
+                label: Some("Compute Pipeline Layout"),
+                bind_group_layouts: &[],
+                push_constant_ranges: &[],
+            });
+        device.create_compute_pipeline(&ComputePipelineDescriptor {
+            label: Some("Compute Pipeline"),
+            layout: Some(&compute_pipeline_layout),
+            module: shader,
+            entry_point: "cs_main",
+        })
+    }
     fn generate_render_pipeline(
         device: &Device,
         config: &SurfaceConfiguration,
         layout: PipelineLayout,
-        shader: ShaderModule,
+        shader: &ShaderModule,
     ) -> RenderPipeline {
         device.create_render_pipeline(&RenderPipelineDescriptor {
             label: Some("Render Pipeline"),
             layout: Some(&layout),
             vertex: VertexState {
-                module: &shader,
+                module: shader,
                 entry_point: "vs_main",
-                buffers: &[
-                    Vertex::desc(),
-                    instance::RawInstance::desc(),
-                    // Vertex::desc(),
-                ],
+                buffers: &[Vertex::desc(), instance::RawInstance::desc()],
             },
             primitive: PrimitiveState {
                 topology: PrimitiveTopology::TriangleList,
@@ -164,7 +182,7 @@ impl State {
                 alpha_to_coverage_enabled: false,
             },
             fragment: Some(FragmentState {
-                module: &shader,
+                module: shader,
                 entry_point: "fs_main",
                 targets: &[Some(ColorTargetState {
                     format: config.format,
@@ -262,6 +280,14 @@ impl State {
                     label: Some("Render Encoder"),
                 });
         {
+            let mut compute_pass =
+                encoder.begin_compute_pass(&ComputePassDescriptor {
+                    label: Some("Compute Pass"),
+                });
+            compute_pass.set_pipeline(&self.compute_pipeline);
+            compute_pass.dispatch_workgroups(10, 10, 10);
+        }
+        {
             let mut render_pass =
                 encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: Some("Render Pass"),
@@ -297,10 +323,7 @@ impl State {
             render_pass
                 .set_vertex_buffer(0, self.model.vertex_buffer.slice(..));
             render_pass.set_vertex_buffer(1, self.instances.buffer.slice(..));
-            // render_pass.set_vertex_buffer(
-            //     2,
-            //     self.model.vertex_buffer.slice(..),
-            // );
+
             render_pass.set_index_buffer(
                 self.model.index_buffer.slice(..),
                 wgpu::IndexFormat::Uint16,
