@@ -21,7 +21,6 @@ pub enum Neighborhood {
 impl Distribution<Neighborhood> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Neighborhood {
         match rng.gen_range(0..=3) {
-            0 => Neighborhood::Moore,
             1 => Neighborhood::MooreNonWrapping,
             2 => Neighborhood::VonNeumann,
             3 => Neighborhood::VonNeumannNonWrapping,
@@ -155,32 +154,32 @@ impl Rule {
         if index.0 + 1 < dim.0
             && cells[(index.0 + 1, index.1, index.2)] == self.max_state
         {
-            sum += 1
+            sum += 1;
         }
         if index.1 + 1 < dim.1
             && cells[(index.0, index.1 + 1, index.2)] == self.max_state
         {
-            sum += 1
+            sum += 1;
         }
         if index.2 + 1 < dim.2
             && cells[(index.0, index.1, index.2 + 1)] == self.max_state
         {
-            sum += 1
+            sum += 1;
         }
         if index.0 > 0
             && cells[(index.0 - 1, index.1, index.2)] == self.max_state
         {
-            sum += 1
+            sum += 1;
         }
         if index.1 > 0
             && cells[(index.0, index.1 - 1, index.2)] == self.max_state
         {
-            sum += 1
+            sum += 1;
         }
         if index.2 > 0
             && cells[(index.0, index.1, index.2 - 1)] == self.max_state
         {
-            sum += 1
+            sum += 1;
         }
         sum
     }
@@ -193,25 +192,25 @@ impl Rule {
         let mut sum = 0;
 
         if cells[((idx.0 + 1) % dim.0, idx.1, idx.2)] == self.max_state {
-            sum += 1
+            sum += 1;
         }
         if cells[(idx.0, (idx.1 + 1) % dim.1, idx.2)] == self.max_state {
-            sum += 1
+            sum += 1;
         }
         if cells[(idx.0, idx.1, (idx.2 + 1) % dim.2)] == self.max_state {
-            sum += 1
+            sum += 1;
         }
         if cells[((idx.0 + dim.0 - 1) % dim.0, idx.1, idx.2)] == self.max_state
         {
-            sum += 1
+            sum += 1;
         }
         if cells[(idx.0, (idx.1 + dim.1 - 1) % dim.1, idx.2)] == self.max_state
         {
-            sum += 1
+            sum += 1;
         }
         if cells[(idx.0, idx.1, (idx.2 + dim.2 - 1) % dim.2)] == self.max_state
         {
-            sum += 1
+            sum += 1;
         }
         sum
     }

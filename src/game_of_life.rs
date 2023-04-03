@@ -43,7 +43,7 @@ impl GameOfLife {
 
             if *c == 1 && self.rule.survive(count) {
             } else if *c == 0 && self.rule.born(count) {
-                *c = self.rule.max_state
+                *c = self.rule.max_state;
             } else {
                 *c = c.saturating_sub(1);
             }
