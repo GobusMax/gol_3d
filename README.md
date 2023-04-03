@@ -30,16 +30,16 @@ cargo run --release -- --help
 ```ebnf
 Rule ::= SurviveMask "/" BornMask "/" MaxState "/" Neighborhood
 
-SurviveMask ::= Mask
-BornMask ::= Mask
-MaxState ::= Number
-Neighborhood ::= "M" | "MN" | "N" | "NN"
+SurviveMask   ::= Mask
+BornMask      ::= Mask
+MaxState      ::= Number
+Neighborhood  ::= "M" | "MN" | "N" | "NN"
 
-Mask ::= BitMask | ListMask
-BitMask ::= "0b" ( "0" | "1" ) { "0" | "1" }
+Mask     ::= BitMask | ListMask
+BitMask  ::= "0b" ( "0" | "1" ) { "0" | "1" }
 ListMask ::= [ Number | Range ] { "," ( Number | Range ) } [ "," ]
 
-Range ::= Number "-" Number
+Range  ::= Number "-" Number
 Number ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
 ```
 
