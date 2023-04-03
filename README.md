@@ -1,40 +1,56 @@
 # 3D GOL with wgpu
 
-A 3D Game Of Life capable of handling arbitrary rules. Rendered with [wgpu](https://wgpu.rs/).
+A 3D Game Of Life capable of simulating arbitrary rules. Rendered with [wgpu](https://wgpu.rs/).
 
-## Rule format
+## Run
 
-```ebnf
-Rule ::= SurviveMask "/" BornMask "/" MaxState "/" Neighborhood
-
-SurviveMask ::= Mask
-BornMask ::= Mask
-MaxState ::= Number
-Neighborhood ::= "M" | "MN" | "N" | "NN"
-
-Mask ::= BitMask | ListMask
-BitMask ::= "0b" ( "0" | "1" ) { "0" | "1" }
-ListMask ::= [ Number | Range ] { "," ( Number | Range ) } [ "," ]
-
-Range ::= Number "-" Number
-Number ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
+```sh
+cargo run --release
 ```
 
-_Neighborhood:_
+For usage information:
 
-- "M" -> Moore & Wrapping
-- "MN" -> Moore & Non-Wrapping
-- "N" -> Von Neumann & Wrapping
-- "NN" -> Von Neumann & Non-Wrapping
+```sh
+cargo run --release -- --help
+```
 
-### Examples:
+## Rule Format
+
+### Examples
 
 ```
 0-6/1,3/2/NN
 12-26/13-14/2/M
 3,5,7,9,11,15,17,19,21,23-24,26/3,6,8-9,11,14-17,19,24/7/M
 0b00110011011000101011110111001010/0b00110101010010101101011111010000/2/M
+1-4,9-11,13,15-17,19,22-25,27-29,31/4-6,9,12,14,16,18-19,25,28,30/4/M/25/0.5
 ```
+
+### Grammar
+
+```ebnf
+Rule ::= SurviveMask "/" BornMask "/" MaxState "/" Neighborhood [ "/" InitSize]  [ "/" InitDensity ]
+
+SurviveMask   ::= Mask
+BornMask      ::= Mask
+MaxState      ::= Integer
+Neighborhood  ::= "M" | "MN" | "N" | "NN"
+InitSize      ::= Integer
+InitDensity   ::= Float
+
+Mask     ::= BitMask | ListMask
+BitMask  ::= "0b" ( "0" | "1" ) { "0" | "1" }
+ListMask ::= [ Integer | Range ] { "," ( Integer | Range ) } [ "," ]
+
+Range   ::= Integer "-" Integer
+```
+
+| Neighborhood Code | Neighborhood Kernel        |
+| ----------------- | -------------------------- |
+| "M"               | Moore & Wrapping           |
+| "MN"              | Moore & Non-Wrapping       |
+| "N"               | Von Neumann & Wrapping     |
+| "NN"              | Von Neumann & Non-Wrapping |
 
 ## References
 
