@@ -18,6 +18,17 @@ pub enum Neighborhood {
     VonNeumannNonWrapping,
 }
 
+impl Display for Neighborhood {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Neighborhood::Moore => write!(f, "M"),
+            Neighborhood::MooreNonWrapping => write!(f, "MN"),
+            Neighborhood::VonNeumann => write!(f, "N"),
+            Neighborhood::VonNeumannNonWrapping => write!(f, "NN"),
+        }
+    }
+}
+
 impl Distribution<Neighborhood> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Neighborhood {
         match rng.gen_range(0..=3) {
@@ -218,11 +229,27 @@ impl Rule {
 
 impl Display for Rule {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Rule{{survive_mask: {:#034b}, born_mask: {:#034b}, max_state:{}, neighborhood: rule::Neighborhood::{:?}}};",
-            self.survive_mask,
-            self.born_mask,
+        // write!(f, "Rule{{survive_mask: {:#034b}, born_mask: {:#034b}, max_state:{}, neighborhood: rule::Neighborhood::{:?}}};",
+        //     self.survive_mask,
+        //     self.born_mask,
+        //     self.max_state,
+        //     self.neighborhood)
+        // write!(
+        //     f,
+        //     "0b{:b}/0b{:b}/{}/{}",
+        //     self.survive_mask,
+        //     self.born_mask,
+        //     self.max_state,
+        //     self.neighborhood
+        // )
+        write!(
+            f,
+            "{}/{}/{}/{}",
+            bit_run_string(self.survive_mask as u64),
+            bit_run_string(self.born_mask as u64),
             self.max_state,
-            self.neighborhood)
+            self.neighborhood
+        )
     }
 }
 
@@ -287,4 +314,43 @@ impl ToBitMask for &str {
         }
         mask
     }
+}
+
+fn bit_run_list(mut n: u64) -> Vec<(u8, u8)> {
+    let mut res = Vec::new();
+    let mut run_start = None;
+    let mut i = 0;
+    while n != 0 || run_start.is_some() {
+        if n & 1 != 0 && run_start.is_none() {
+            run_start = Some(i);
+        } else if n & 1 == 0 {
+            if let Some(start) = run_start {
+                let end = i - 1;
+                res.push((start, end));
+                run_start = None;
+            }
+        }
+
+        n >>= 1;
+        i += 1;
+    }
+
+    res
+}
+
+fn bit_run_string(n: u64) -> String {
+    let bit_runs = bit_run_list(n);
+    let mut res = String::new();
+    for (start, end) in bit_runs {
+        if !res.is_empty() {
+            res += ",";
+        }
+        if start == end {
+            res += &format!("{}", start);
+        } else {
+            res += &format!("{}-{}", start, end);
+        }
+    }
+
+    res
 }

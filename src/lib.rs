@@ -27,23 +27,51 @@ use winit::{
     window::Window,
 };
 
+use clap::Parser;
+
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    /// Read the rule from a file
+    #[arg(short, long)]
+    file: Option<String>,
+
+    /// Pass in the rule directly
+    rule: Option<String>,
+}
+
 pub struct State {
-    pub env: environment::Environment,
-    pub camera: Camera,
-    pub model: Model,
-    pub instances: instance::InstancesVec,
-    pub depth_texture: texture::Texture,
-    pub render_pipeline: RenderPipeline,
-    pub gol: GameOfLife,
-    pub paused: bool,
+    env: environment::Environment,
+    camera: Camera,
+    model: Model,
+    instances: instance::InstancesVec,
+    depth_texture: texture::Texture,
+    render_pipeline: RenderPipeline,
+    gol: GameOfLife,
+    paused: bool,
 }
 impl State {
     pub fn new(window: Window) -> Self {
         //* GOL
 
+        let args = Args::parse();
+
+        let rule = {
+            let mut rule_string = if let Some(r) = args.rule {
+                r
+            } else if let Some(f) = args.file {
+                fs::read_to_string(f).unwrap()
+            } else {
+                cool_rules::as_str::PERIODIC_FUNKY.to_string()
+            };
+
+            rule_string.retain(|c| !c.is_whitespace());
+
+            rule_string.parse::<Rule>().unwrap()
+        };
         // let rule = cool_rules::as_rule::GLIDER_HEAVEN;
         // let rule = cool_rules::as_str::SHELLS.parse::<Rule>().urnwrap();
-        let rule = cool_rules::as_str::PERIODIC_FUNKY.parse::<Rule>().unwrap();
+        // let rule = cool_rules::as_str::PERIODIC_FUNKY.parse::<Rule>().unwrap();
 
         let gol = GameOfLife {
             cells: GameOfLife::new_random_preset(rule.max_state),
