@@ -1,4 +1,4 @@
-use wgpu_test::run;
+use gol_3d::run;
 
 fn main() {
     run();

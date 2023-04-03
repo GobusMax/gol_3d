@@ -101,10 +101,10 @@ pub fn run() {
                 Err(wgpu::SurfaceError::Lost) => state.resize(state.env.size),
                 // The system is out of memory, we should probably quit
                 Err(wgpu::SurfaceError::OutOfMemory) => {
-                    *control_flow = ControlFlow::Exit
+                    *control_flow = ControlFlow::Exit;
                 }
                 // All other errors (Outdated, Timeout) should be resolved by the next frame
-                Err(e) => eprintln!("{:?}", e),
+                Err(e) => eprintln!("{e:?}"),
             }
             // println!(
             //     "{}",
@@ -267,7 +267,7 @@ impl State {
             self.depth_texture = texture::Texture::create_depth_texture(
                 &self.env.device,
                 &self.env.config,
-            )
+            );
         }
     }
 
@@ -323,7 +323,7 @@ impl State {
             &self.camera.buffer,
             0,
             bytemuck::cast_slice(&[self.camera.uniform.view_proj]),
-        )
+        );
     }
 
     fn render(&mut self) -> Result<(), wgpu::SurfaceError> {

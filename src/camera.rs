@@ -6,7 +6,9 @@ use wgpu::{
     BindGroupLayoutEntry, Buffer, BufferUsages, Device, ShaderStages,
     SurfaceConfiguration,
 };
-use winit::event::*;
+use winit::event::{
+    DeviceEvent, ElementState, KeyboardInput, VirtualKeyCode, WindowEvent,
+};
 
 use crate::game_of_life::SIZE;
 
@@ -213,10 +215,10 @@ impl CameraController {
         camera_entity.dir = camera_entity.dir.normalize();
         let forward = camera_entity.dir * self.speed * delta;
         if self.is_forward_pressed {
-            camera_entity.pos += forward
+            camera_entity.pos += forward;
         }
         if self.is_backward_pressed {
-            camera_entity.pos -= forward
+            camera_entity.pos -= forward;
         }
 
         let right = camera_entity.dir.cross(camera_entity.up).normalize()

@@ -1,5 +1,5 @@
 [package]
-name = "wgpu_test"
+name = "gol_3d"
 version = "0.1.0"
 edition = "2021"
 authors = ["GobusMax", "Garbaz"]
