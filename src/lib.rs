@@ -125,8 +125,9 @@ impl State {
     fn new(window: Window) -> Self {
         //* GOL
 
-        let rule = cool_rules::as_rule::GLIDER_HEAVEN;
+        // let rule = cool_rules::as_rule::GLIDER_HEAVEN;
         // let rule = cool_rules::as_str::SHELLS.parse::<Rule>().urnwrap();
+        let rule = cool_rules::as_str::PERIODIC_FUNKY.parse::<Rule>().unwrap();
 
         let gol = GameOfLife {
             cells: GameOfLife::new_random_preset(rule.max_state),

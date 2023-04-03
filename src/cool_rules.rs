@@ -7,6 +7,8 @@ pub mod as_str {
     pub const CRYSTAL_GROWTH: &str = "0-6/1,3/2/NN";
 
     pub const CLOUDS2: &str = "12-26/13-14/2/M";
+
+    pub const PERIODIC_FUNKY : &str = "0b00110011011000101011110111001010/0b00110101010010101101011111010000/2/M";
 }
 
 pub mod as_rule {
