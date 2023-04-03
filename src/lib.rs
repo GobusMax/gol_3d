@@ -7,10 +7,12 @@ pub mod model;
 pub mod rule;
 pub mod rule_parse;
 pub mod texture;
+pub mod args;
 
 use std::fs;
 
 use camera::Camera;
+use clap::Parser;
 use environment::Environment;
 use game_of_life::GameOfLife;
 use model::{Model, Vertex};
@@ -28,19 +30,6 @@ use winit::{
     event::{ElementState, VirtualKeyCode, WindowEvent},
     window::Window,
 };
-
-use clap::Parser;
-
-#[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
-struct Args {
-    /// Read the rule from a file
-    #[arg(short, long)]
-    file: Option<String>,
-
-    /// Pass in the rule directly
-    rule: Option<String>,
-}
 
 pub struct Init {
     pub size: usize,
@@ -61,9 +50,9 @@ impl State {
     pub fn new(window: Window) -> Self {
         //* GOL
 
-        let args = Args::parse();
+        let args = args::Args::parse();
 
-        let (rule, init) = {
+        let (rule, mut init) = {
             let mut rule_string = if let Some(r) = args.rule {
                 r
             } else if let Some(f) = args.file {
@@ -76,6 +65,13 @@ impl State {
 
             rule_parse::rule_and_init(&rule_string).unwrap().1
         };
+
+        if let Some(s) = args.init_size {
+            init.size = s;
+        }
+        if let Some(d) = args.init_density {
+            init.density = d;
+        }
         // let rule = cool_rules::as_rule::GLIDER_HEAVEN;
         // let rule = cool_rules::as_str::SHELLS.parse::<Rule>().urnwrap();
         // let rule = cool_rules::as_str::PERIODIC_FUNKY.parse::<Rule>().unwrap();
@@ -198,7 +194,7 @@ impl State {
     pub fn input(&mut self, event: &WindowEvent) -> bool {
         match event {
             WindowEvent::KeyboardInput { input, .. }
-                if input.virtual_keycode == Some(VirtualKeyCode::Space)
+                if input.virtual_keycode == Some(VirtualKeyCode::Return)
                     && input.state == ElementState::Pressed =>
             {
                 self.gol.update();
@@ -206,7 +202,7 @@ impl State {
                 return true;
             }
             WindowEvent::KeyboardInput { input, .. }
-                if input.virtual_keycode == Some(VirtualKeyCode::Tab)
+                if input.virtual_keycode == Some(VirtualKeyCode::Space)
                     && input.state == ElementState::Released =>
             {
                 self.paused = !self.paused;

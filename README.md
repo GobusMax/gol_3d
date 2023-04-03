@@ -14,6 +14,15 @@ For usage information:
 cargo run --release -- --help
 ```
 
+## Keybinds
+
+| Key    | Effect                   |
+| ------ | ------------------------ |
+| SPACE  | Unpause/pause simulation |
+| RETURN | Step the simulation      |
+| R      | Reset to initial state   |
+| Q      | Generate new random rule |
+
 ## Rule Format
 
 ### Examples
