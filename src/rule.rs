@@ -59,6 +59,7 @@ impl Rule {
             born_mask: born.to_bit_mask(),
             max_state,
             neighborhood,
+            
         }
     }
     pub fn new_random() -> Self {
@@ -257,8 +258,8 @@ impl FromStr for Rule {
     type Err = nom::error::Error<String>;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match rule_parse::rule(s).finish() {
-            Ok((_, r)) => Ok(r),
+        match rule_parse::rule_and_init(s).finish() {
+            Ok((_, (r,_))) => Ok(r),
             Err(nom::error::Error { input, code }) => Err(nom::error::Error {
                 input: input.to_string(),
                 code,

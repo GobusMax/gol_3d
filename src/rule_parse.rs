@@ -4,11 +4,15 @@ use nom::{
     character,
     combinator::{map, map_res, opt, value},
     multi::fold_many0,
+    number,
     sequence::{preceded, separated_pair, terminated, tuple},
     IResult,
 };
 
-use crate::rule::{Neighborhood, Rule};
+use crate::{
+    rule::{Neighborhood, Rule},
+    Init,
+};
 
 fn bitmask(input: &str) -> IResult<&str, u32> {
     alt((
@@ -43,7 +47,7 @@ fn bitmask(input: &str) -> IResult<&str, u32> {
     ))(input)
 }
 
-pub fn rule(input: &str) -> IResult<&str, Rule> {
+pub fn rule_and_init(input: &str) -> IResult<&str, (Rule, Init)> {
     map(
         tuple((
             bitmask,
@@ -58,12 +62,35 @@ pub fn rule(input: &str) -> IResult<&str, Rule> {
                 value(Neighborhood::VonNeumann, tag("N")),
                 value(Neighborhood::VonNeumannNonWrapping, tag("NN")),
             )),
+            opt(preceded(
+                tag("/"),
+                map(character::complete::u64, |n| n as usize),
+            )),
+            opt(preceded(tag("/"), number::complete::double)),
         )),
-        |(survive_mask, _, born_mask, _, max_state, _, neighborhood)| Rule {
+        |(
             survive_mask,
+            _,
             born_mask,
+            _,
             max_state,
+            _,
             neighborhood,
+            init_size,
+            init_density,
+        )| {
+            (
+                Rule {
+                    survive_mask,
+                    born_mask,
+                    max_state,
+                    neighborhood,
+                },
+                Init {
+                    size: init_size,
+                    density: init_density,
+                },
+            )
         },
     )(input)
 }

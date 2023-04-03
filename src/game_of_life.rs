@@ -1,7 +1,7 @@
 use ndarray::Array3;
 use ndarray_rand::RandomExt;
 
-use crate::rule::Rule;
+use crate::{rule::Rule, Init};
 
 pub const SIZE: usize = 100;
 pub struct GameOfLife {
@@ -10,7 +10,7 @@ pub struct GameOfLife {
 }
 
 impl GameOfLife {
-    pub fn new_random(
+    pub fn cells_random(
         size: usize,
         partial_size: usize,
         prob: f64,
@@ -32,8 +32,18 @@ impl GameOfLife {
             );
         cells
     }
-    pub fn new_random_preset(max_state: u8) -> Array3<u8> {
-        Self::new_random(SIZE, 2, 1., max_state)
+
+    pub fn cells_random_init(max_state: u8, init: Init) -> Array3<u8> {
+        Self::cells_random(
+            SIZE,
+            init.size.unwrap_or(SIZE / 2),
+            init.density.unwrap_or(0.5),
+            max_state,
+        )
+    }
+
+    pub fn cells_random_preset(max_state: u8) -> Array3<u8> {
+        Self::cells_random(SIZE, 2, 1., max_state)
     }
 
     pub fn update(&mut self) {

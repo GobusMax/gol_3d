@@ -28,19 +28,20 @@ cargo run --release -- --help
 ### Grammar
 
 ```ebnf
-Rule ::= SurviveMask "/" BornMask "/" MaxState "/" Neighborhood
+Rule ::= SurviveMask "/" BornMask "/" MaxState "/" Neighborhood [ "/" InitSize]  [ "/" InitDensity ]
 
 SurviveMask   ::= Mask
 BornMask      ::= Mask
-MaxState      ::= Number
+MaxState      ::= Integer
 Neighborhood  ::= "M" | "MN" | "N" | "NN"
+InitSize      ::= Integer
+InitDensity   ::= Float
 
 Mask     ::= BitMask | ListMask
 BitMask  ::= "0b" ( "0" | "1" ) { "0" | "1" }
-ListMask ::= [ Number | Range ] { "," ( Number | Range ) } [ "," ]
+ListMask ::= [ Integer | Range ] { "," ( Integer | Range ) } [ "," ]
 
-Range  ::= Number "-" Number
-Number ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
+Range   ::= Integer "-" Integer
 ```
 
 | Neighborhood Code | Neighborhood Kernel        |
