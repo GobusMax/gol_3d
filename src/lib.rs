@@ -1,3 +1,4 @@
+pub mod args;
 pub mod camera;
 pub mod cool_rules;
 pub mod environment;
@@ -7,7 +8,6 @@ pub mod model;
 pub mod rule;
 pub mod rule_parse;
 pub mod texture;
-pub mod args;
 
 use std::fs;
 
@@ -47,6 +47,7 @@ pub struct State {
     pub compute_pipeline: ComputePipeline,
     pub gol: GameOfLife,
     pub paused: bool,
+    pub cursor_grab: bool,
 }
 impl State {
     pub fn new(window: Window) -> Self {
@@ -129,6 +130,7 @@ impl State {
             compute_pipeline,
             gol,
             paused: true,
+            cursor_grab: true,
         }
     }
     fn generate_compute_pipeline(
@@ -215,7 +217,7 @@ impl State {
         match event {
             WindowEvent::KeyboardInput { input, .. }
                 if input.virtual_keycode == Some(VirtualKeyCode::Return)
-                    && input.state == ElementState::Pressed =>
+                    && input.state == ElementState::Released =>
             {
                 self.gol.update();
                 self.instances = (&self.gol, &self.env.device).into();
@@ -252,6 +254,28 @@ impl State {
                 println!("{}", self.gol.rule);
                 return true;
             }
+            WindowEvent::KeyboardInput { input, .. }
+                if input.virtual_keycode == Some(VirtualKeyCode::Slash)
+                    && input.state == ElementState::Released =>
+            {
+                if self.cursor_grab {
+                    self.env
+                        .window
+                        .set_cursor_grab(winit::window::CursorGrabMode::None)
+                        .unwrap();
+                    self.env.window.set_cursor_visible(true);
+                } else {
+                    self.env
+                        .window
+                        .set_cursor_grab(
+                            winit::window::CursorGrabMode::Confined,
+                        )
+                        .unwrap();
+                    self.env.window.set_cursor_visible(false);
+                }
+                self.cursor_grab = !self.cursor_grab;
+                return true;
+            }
             _ => (),
         }
         self.camera.controller.process_events(event)
@@ -262,12 +286,14 @@ impl State {
             self.gol.update();
             self.instances = (&self.gol, &self.env.device).into();
         }
-        self.camera.update(delta);
-        self.env.queue.write_buffer(
-            &self.camera.buffer,
-            0,
-            bytemuck::cast_slice(&[self.camera.uniform.view_proj]),
-        );
+        if self.cursor_grab {
+            self.camera.update(delta);
+            self.env.queue.write_buffer(
+                &self.camera.buffer,
+                0,
+                bytemuck::cast_slice(&[self.camera.uniform.view_proj]),
+            );
+        }
     }
 
     pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
