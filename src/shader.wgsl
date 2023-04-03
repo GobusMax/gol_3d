@@ -43,3 +43,7 @@ fn vs_main(
 fn fs_main(in: VertexOutput) -> @ location(0) vec4<f32> {
     return in.color * in.shade;
 }
+
+@compute @workgroup_size(10)
+fn cs_main() {
+}
