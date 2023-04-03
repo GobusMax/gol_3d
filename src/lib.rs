@@ -8,7 +8,7 @@ mod rule;
 mod rule_parse;
 mod texture;
 
-use std::time::Instant;
+use std::{fs, time::Instant};
 
 use camera::Camera;
 use environment::Environment;
@@ -29,6 +29,19 @@ use winit::{
     event_loop::{ControlFlow, EventLoop},
     window::{Window, WindowBuilder},
 };
+
+use clap::Parser;
+
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    /// Read the rule from a file
+    #[arg(short, long)]
+    file: Option<String>,
+
+    /// Pass in the rule directly
+    rule: Option<String>,
+}
 
 pub fn run() {
     let mut timer = Instant::now();
@@ -125,9 +138,24 @@ impl State {
     fn new(window: Window) -> Self {
         //* GOL
 
+        let args = Args::parse();
+
+        let rule = {
+            let mut rule_string = if let Some(r) = args.rule {
+                r
+            } else if let Some(f) = args.file {
+                fs::read_to_string(f).unwrap()
+            } else {
+                cool_rules::as_str::PERIODIC_FUNKY.to_string()
+            };
+
+            rule_string.retain(|c| !c.is_whitespace());
+
+            rule_string.parse::<Rule>().unwrap()
+        };
         // let rule = cool_rules::as_rule::GLIDER_HEAVEN;
         // let rule = cool_rules::as_str::SHELLS.parse::<Rule>().urnwrap();
-        let rule = cool_rules::as_str::PERIODIC_FUNKY.parse::<Rule>().unwrap();
+        // let rule = cool_rules::as_str::PERIODIC_FUNKY.parse::<Rule>().unwrap();
 
         let gol = GameOfLife {
             cells: GameOfLife::new_random_preset(rule.max_state),
