@@ -1,14 +1,12 @@
-mod camera;
-mod cool_rules;
-mod environment;
-mod game_of_life;
-mod instance;
-mod model;
-mod rule;
-mod rule_parse;
-mod texture;
-
-use std::time::Instant;
+pub mod camera;
+pub mod cool_rules;
+pub mod environment;
+pub mod game_of_life;
+pub mod instance;
+pub mod model;
+pub mod rule;
+pub mod rule_parse;
+pub mod texture;
 
 use camera::Camera;
 use environment::Environment;
@@ -25,104 +23,22 @@ use wgpu::{
     SurfaceConfiguration, TextureViewDescriptor, VertexState,
 };
 use winit::{
-    event::{ElementState, Event, VirtualKeyCode, WindowEvent},
-    event_loop::{ControlFlow, EventLoop},
-    window::{Window, WindowBuilder},
+    event::{ElementState, VirtualKeyCode, WindowEvent},
+    window::Window,
 };
 
-pub fn run() {
-    let mut timer = Instant::now();
-    env_logger::init();
-    let event_loop = EventLoop::new();
-    let window = WindowBuilder::new()
-        .with_inner_size(winit::dpi::PhysicalSize::new(900, 900))
-        .build(&event_loop)
-        .unwrap();
-
-    let mut state = State::new(window);
-    state
-        .env
-        .window
-        .set_cursor_grab(winit::window::CursorGrabMode::Confined)
-        .unwrap();
-    state.env.window.set_cursor_visible(false);
-    event_loop.run(move |event, _, control_flow| match event {
-        Event::WindowEvent {
-            ref event,
-            window_id,
-        } if window_id == state.env.window.id() => {
-            if !state.input(event) {
-                match event {
-                    WindowEvent::CloseRequested
-                    | WindowEvent::KeyboardInput {
-                        input:
-                            winit::event::KeyboardInput {
-                                state: ElementState::Pressed,
-                                virtual_keycode: Some(VirtualKeyCode::Escape),
-                                ..
-                            },
-                        ..
-                    } => *control_flow = ControlFlow::Exit,
-
-                    WindowEvent::Resized(physicalsize) => {
-                        state.resize(*physicalsize);
-                    }
-                    WindowEvent::ScaleFactorChanged {
-                        new_inner_size, ..
-                    } => {
-                        state.resize(**new_inner_size);
-                    }
-                    _ => {}
-                }
-            }
-        }
-        Event::RedrawRequested(window_id)
-            if window_id == state.env.window.id() =>
-        {
-            let delta = timer.elapsed().as_secs_f32();
-            timer = Instant::now();
-            state.update(delta);
-            match state.render() {
-                Ok(_) => {}
-                // Reconfigure the surface if lost
-                Err(wgpu::SurfaceError::Lost) => state.resize(state.env.size),
-                // The system is out of memory, we should probably quit
-                Err(wgpu::SurfaceError::OutOfMemory) => {
-                    *control_flow = ControlFlow::Exit;
-                }
-                // All other errors (Outdated, Timeout) should be resolved by the next frame
-                Err(e) => eprintln!("{e:?}"),
-            }
-            // println!(
-            //     "{}",
-            //     1. / delta
-            // )
-        }
-        Event::MainEventsCleared => {
-            state.env.window.request_redraw();
-        }
-        Event::DeviceEvent {
-            device_id: _,
-            event,
-        } => {
-            state.camera.controller.process_mouse(&event);
-        }
-        _ => {}
-    });
-}
-
-struct State {
-    env: environment::Environment,
-    camera: Camera,
-    model: Model,
-    instances: instance::InstancesVec,
-    depth_texture: texture::Texture,
-    render_pipeline: RenderPipeline,
-    gol: GameOfLife,
-    paused: bool,
+pub struct State {
+    pub env: environment::Environment,
+    pub camera: Camera,
+    pub model: Model,
+    pub instances: instance::InstancesVec,
+    pub depth_texture: texture::Texture,
+    pub render_pipeline: RenderPipeline,
+    pub gol: GameOfLife,
+    pub paused: bool,
 }
 impl State {
-    fn new(window: Window) -> Self {
+    pub fn new(window: Window) -> Self {
         //* GOL
 
         // let rule = cool_rules::as_rule::GLIDER_HEAVEN;
@@ -243,7 +159,7 @@ impl State {
         }
     }
 
-    fn input(&mut self, event: &WindowEvent) -> bool {
+    pub fn input(&mut self, event: &WindowEvent) -> bool {
         match event {
             WindowEvent::KeyboardInput { input, .. }
                 if input.virtual_keycode == Some(VirtualKeyCode::Space)
@@ -285,7 +201,7 @@ impl State {
         self.camera.controller.process_events(event)
     }
 
-    fn update(&mut self, delta: f32) {
+    pub fn update(&mut self, delta: f32) {
         if !self.paused {
             self.gol.update();
             self.instances = (&self.gol, &self.env.device).into();
@@ -298,7 +214,7 @@ impl State {
         );
     }
 
-    fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
+    pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
         let output = self.env.surface.get_current_texture()?;
         let view = output
             .texture

@@ -121,6 +121,12 @@ impl CameraUniform {
         self.view_proj = camera_entity.build_view_projection_matrix().into();
     }
 }
+
+impl Default for CameraUniform {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 pub struct CameraController {
     speed: f32,
     sens: f32,
