@@ -4,7 +4,7 @@ pub mod as_str {
     pub const SHELLS: &str =
         "3,5,7,9,11,15,17,19,21,23-24,26/3,6,8-9,11,14-17,19,24/7/M";
 
-    pub const CRYSTAL_GROWTH: &str = "0-6/1,3/2/NNW";
+    pub const CRYSTAL_GROWTH: &str = "0-6/1,3/2/NN";
 
     pub const CLOUDS2: &str = "12-26/13-14/2/M";
 }
@@ -35,7 +35,7 @@ pub mod as_rule {
         born_mask: 0b01010010000011010101001001110000,
         max_state: 4,
         neighborhood: Neighborhood::MooreWrapping,
-    }; // restart often
+    }; // ^ restart often
     pub const GLIDER_HEAVEN: Rule = Rule {
         survive_mask: 0b00110011011000101011110111001010,
         born_mask: 0b00110101010010101101011111010000,

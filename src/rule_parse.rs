@@ -1,38 +1,46 @@
 use nom::{
     branch::alt,
-    bytes::complete::tag,
+    bytes::complete::{tag, take_while1},
     character,
-    combinator::{map, opt, value},
+    combinator::{map, map_res, opt, value},
     multi::fold_many0,
-    sequence::{separated_pair, terminated, tuple},
+    sequence::{preceded, separated_pair, terminated, tuple},
     IResult,
 };
 
 use crate::rule::{Neighborhood, Rule};
 
 fn bitmask(input: &str) -> IResult<&str, u32> {
-    fold_many0(
-        terminated(
-            alt((
-                // Range of bits
-                map(
-                    separated_pair(
-                        character::complete::u8,
-                        tag("-"),
-                        character::complete::u8,
-                    ),
-                    |(l, r)| ((1 << l) - 1) ^ ((1 << (r + 1)) - 1),
-                ),
-                // Single bit
-                map(character::complete::u8, |n| 1 << n),
-            )),
-            // Not quite correct, better would be a `separated_fold0`, like
-            // `separated_list0`, but that doesn't exist :(
-            opt(tag(",")),
+    alt((
+        preceded(
+            tag("0b"),
+            map_res(take_while1(|c| c == '0' || c == '1'), |s| {
+                u32::from_str_radix(s, 2)
+            }),
         ),
-        || 0,
-        |acc, m| (acc | m),
-    )(input)
+        fold_many0(
+            terminated(
+                alt((
+                    // Range of bits
+                    map(
+                        separated_pair(
+                            character::complete::u8,
+                            tag("-"),
+                            character::complete::u8,
+                        ),
+                        |(l, r)| ((1 << l) - 1) ^ ((1 << (r + 1)) - 1),
+                    ),
+                    // Single bit
+                    map(character::complete::u8, |n| 1 << n),
+                )),
+                // Not quite correct, better would be a `separated_fold0`, like
+                // `separated_list0`, but that doesn't exist :(
+                opt(tag(",")),
+            ),
+            || 0,
+            |acc, m| (acc | m),
+        ),
+    ))(input)
 }
 
 pub fn rule(input: &str) -> IResult<&str, Rule> {
