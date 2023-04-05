@@ -1,5 +1,3 @@
-use std::num::NonZeroU32;
-
 use ndarray::Array3;
 use ndarray_rand::RandomExt;
 use wgpu::{
@@ -14,7 +12,7 @@ pub const SIZE: usize = 100;
 pub struct GameOfLife {
     pub cells: Array3<u8>,
     pub rule: Rule,
-    pub init : Init,
+    pub init: Init,
 }
 
 impl GameOfLife {
@@ -42,12 +40,7 @@ impl GameOfLife {
     }
 
     pub fn cells_random_init(max_state: u8, init: &Init) -> Array3<u8> {
-        Self::cells_random(
-            SIZE,
-            init.size,
-            init.density,
-            max_state,
-        )
+        Self::cells_random(SIZE, init.size, init.density, max_state)
     }
 
     pub fn cells_random_preset(max_state: u8) -> Array3<u8> {
@@ -90,14 +83,15 @@ impl GameOfLife {
                         has_dynamic_offset: false,
                         min_binding_size: None,
                     },
-                    count: Some(NonZeroU32::new((SIZE.pow(3)) as u32).unwrap()),
+                    // count: Some(NonZeroU32::new((SIZE.pow(3)) as u32).unwrap()),
+                    count: None,
                 }],
             });
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Compute Bind Groups"),
             layout: &bind_group_layout,
             entries: &[BindGroupEntry {
-                binding: 7,
+                binding: 0,
                 resource: buffer.as_entire_binding(),
             }],
         });

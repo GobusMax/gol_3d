@@ -38,12 +38,17 @@ fn vs_main(
 
 
 
-
 @fragment 
 fn fs_main(in: VertexOutput) -> @ location(0) vec4<f32> {
     return in.color * in.shade;
 }
 
-@compute @workgroup_size(10)
-fn cs_main() {
+@group(0) 
+@binding(0)
+var<storage, read_write> cells: array<u32>;
+
+@compute 
+@workgroup_size(1)
+fn cs_main(@builtin(global_invocation_id) global_id: vec3<u32>) {
+    cells[global_id.x] += global_id.x;
 }

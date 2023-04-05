@@ -19,13 +19,12 @@ use model::{Model, Vertex};
 use pollster::FutureExt;
 use rule::Rule;
 use wgpu::{
-    include_wgsl, BlendState, ColorTargetState, ColorWrites,
-    CommandEncoderDescriptor, ComputePassDescriptor, ComputePipeline,
-    ComputePipelineDescriptor, DepthBiasState, DepthStencilState, Device,
-    FragmentState, MultisampleState, Operations, PipelineLayout,
-    PipelineLayoutDescriptor, PrimitiveState, PrimitiveTopology,
-    RenderPipeline, RenderPipelineDescriptor, ShaderModule, StencilState,
-    SurfaceConfiguration, TextureViewDescriptor, VertexState,
+    include_wgsl, BindGroupLayout, BlendState, ColorTargetState, ColorWrites,
+    CommandEncoderDescriptor, ComputePipeline, ComputePipelineDescriptor,
+    DepthBiasState, DepthStencilState, Device, FragmentState, MultisampleState,
+    Operations, PipelineLayout, PipelineLayoutDescriptor, PrimitiveState,
+    PrimitiveTopology, RenderPipeline, RenderPipelineDescriptor, ShaderModule,
+    StencilState, SurfaceConfiguration, TextureViewDescriptor, VertexState,
 };
 use winit::{
     event::{ElementState, VirtualKeyCode, WindowEvent},
@@ -44,7 +43,6 @@ pub struct State {
     pub instances: instance::InstancesVec,
     pub depth_texture: texture::Texture,
     pub render_pipeline: RenderPipeline,
-    pub compute_pipeline: ComputePipeline,
     pub gol: GameOfLife,
     pub paused: bool,
     pub cursor_grab: bool,
@@ -117,9 +115,6 @@ impl State {
             &shader,
         );
 
-        let compute_pipeline =
-            Self::generate_compute_pipeline(&env.device, &shader);
-        println!("{:?}", env.device.limits());
         Self {
             env,
             camera,
@@ -127,7 +122,6 @@ impl State {
             instances,
             depth_texture,
             render_pipeline,
-            compute_pipeline,
             gol,
             paused: true,
             cursor_grab: true,
@@ -135,14 +129,16 @@ impl State {
     }
     fn generate_compute_pipeline(
         device: &Device,
+        layout: &BindGroupLayout,
         shader: &ShaderModule,
     ) -> ComputePipeline {
         let compute_pipeline_layout =
             device.create_pipeline_layout(&PipelineLayoutDescriptor {
                 label: Some("Compute Pipeline Layout"),
-                bind_group_layouts: &[],
+                bind_group_layouts: &[layout],
                 push_constant_ranges: &[],
             });
+
         device.create_compute_pipeline(&ComputePipelineDescriptor {
             label: Some("Compute Pipeline"),
             layout: Some(&compute_pipeline_layout),
@@ -307,14 +303,6 @@ impl State {
                 .create_command_encoder(&CommandEncoderDescriptor {
                     label: Some("Render Encoder"),
                 });
-        {
-            let mut compute_pass =
-                encoder.begin_compute_pass(&ComputePassDescriptor {
-                    label: Some("Compute Pass"),
-                });
-            compute_pass.set_pipeline(&self.compute_pipeline);
-            compute_pass.dispatch_workgroups(10, 10, 10);
-        }
         {
             let mut render_pass =
                 encoder.begin_render_pass(&wgpu::RenderPassDescriptor {

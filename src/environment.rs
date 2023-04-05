@@ -34,7 +34,7 @@ impl Environment {
             .request_device(
                 &wgpu::DeviceDescriptor {
                     label: None,
-                    features: Features::empty(),
+                    features: Features::VERTEX_WRITABLE_STORAGE,
                     limits: Limits::default(),
                 },
                 None,
