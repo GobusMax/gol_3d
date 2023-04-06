@@ -114,7 +114,6 @@ impl State {
             render_pipeline_layout,
             &shader,
         );
-
         Self {
             env,
             camera,
@@ -127,7 +126,7 @@ impl State {
             cursor_grab: true,
         }
     }
-    fn generate_compute_pipeline(
+    fn _generate_compute_pipeline(
         device: &Device,
         layout: &BindGroupLayout,
         shader: &ShaderModule,

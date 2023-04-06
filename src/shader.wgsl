@@ -47,8 +47,16 @@ fn fs_main(in: VertexOutput) -> @ location(0) vec4<f32> {
 @binding(0)
 var<storage, read_write> cells: array<u32>;
 
+@group(0) 
+@binding(1)
+var tex: texture_3d<u32>;
+
+
 @compute 
 @workgroup_size(1)
 fn cs_main(@builtin(global_invocation_id) global_id: vec3<u32>) {
-    cells[global_id.x] += global_id.x;
+    let id_flat = global_id.x * 100u * 100u + global_id.y * 100u + global_id.z;
+    let idi32 = vec3<i32>(i32(global_id.x), i32(global_id.y), i32(global_id.z));
+    cells[id_flat] = 1u;
+    // cells[id_flat] = textureLoad(tex, idi32, 0).x;
 }
