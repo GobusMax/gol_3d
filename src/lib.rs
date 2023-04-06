@@ -119,7 +119,7 @@ impl State {
 
         let compute_pipeline =
             Self::generate_compute_pipeline(&env.device, &shader);
-        println!("{:?}", env.device.limits());
+        // println!("{:?}", env.device.limits());
         Self {
             env,
             camera,
