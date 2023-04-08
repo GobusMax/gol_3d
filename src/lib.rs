@@ -14,17 +14,22 @@ use std::fs;
 use camera::Camera;
 use clap::Parser;
 use environment::Environment;
-use game_of_life::GameOfLife;
+use game_of_life::{GameOfLife, SIZE};
 use model::{Model, Vertex};
+use ndarray::Array3;
 use pollster::FutureExt;
 use rule::Rule;
 use wgpu::{
-    include_wgsl, BindGroupLayout, BlendState, ColorTargetState, ColorWrites,
-    CommandEncoderDescriptor, ComputePipeline, ComputePipelineDescriptor,
-    DepthBiasState, DepthStencilState, Device, FragmentState, MultisampleState,
-    Operations, PipelineLayout, PipelineLayoutDescriptor, PrimitiveState,
-    PrimitiveTopology, RenderPipeline, RenderPipelineDescriptor, ShaderModule,
-    StencilState, SurfaceConfiguration, TextureViewDescriptor, VertexState,
+    include_wgsl, util::DeviceExt, BindGroup, BindGroupEntry,
+    BindGroupLayoutDescriptor, BindGroupLayoutEntry, BlendState,
+    ColorTargetState, ColorWrites, CommandEncoderDescriptor,
+    ComputePassDescriptor, ComputePipeline, ComputePipelineDescriptor,
+    DepthBiasState, DepthStencilState, Device, Extent3d, FragmentState,
+    MultisampleState, Operations, PipelineLayout, PipelineLayoutDescriptor,
+    PrimitiveState, PrimitiveTopology, Queue, RenderPipeline,
+    RenderPipelineDescriptor, ShaderModule, ShaderStages, StencilState,
+    SurfaceConfiguration, Texture, TextureDescriptor, TextureFormat,
+    TextureUsages, TextureViewDescriptor, VertexState,
 };
 use winit::{
     event::{ElementState, VirtualKeyCode, WindowEvent},
@@ -46,6 +51,8 @@ pub struct State {
     pub gol: GameOfLife,
     pub paused: bool,
     pub cursor_grab: bool,
+    compute_bind_group: BindGroup,
+    compute_pipeline: ComputePipeline,
 }
 impl State {
     pub fn new(window: Window) -> Self {
@@ -111,9 +118,11 @@ impl State {
         let render_pipeline = Self::generate_render_pipeline(
             &env.device,
             &env.config,
-            render_pipeline_layout,
+            &render_pipeline_layout,
             &shader,
         );
+        let (compute_pipeline, compute_bind_group) =
+            Self::init_compute(&gol.cells, &env.queue, &env.device, &shader);
         Self {
             env,
             camera,
@@ -124,36 +133,98 @@ impl State {
             gol,
             paused: true,
             cursor_grab: true,
+            compute_bind_group,
+            compute_pipeline,
         }
     }
-    fn _generate_compute_pipeline(
+    fn init_compute(
+        cells: &Array3<u8>,
+        queue: &Queue,
         device: &Device,
-        layout: &BindGroupLayout,
         shader: &ShaderModule,
-    ) -> ComputePipeline {
+    ) -> (ComputePipeline, BindGroup) {
+        let cells_vec: Vec<u8> = cells.clone().into_raw_vec();
+        println!("{}", cells_vec[0]);
+        let cells_texture = device.create_texture_with_data(
+            queue,
+            &TextureDescriptor {
+                label: Some("Cells Texture"),
+                size: Extent3d {
+                    width: SIZE as u32,
+                    height: SIZE as u32,
+                    depth_or_array_layers: SIZE as u32,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D3,
+                format: TextureFormat::R8Uint,
+                usage: TextureUsages::TEXTURE_BINDING
+                    | TextureUsages::COPY_SRC
+                    | TextureUsages::COPY_DST,
+                view_formats: &[TextureFormat::R8Uint],
+            },
+            bytemuck::cast_slice(&cells_vec),
+        );
+        let cells_texture_view =
+            cells_texture.create_view(&TextureViewDescriptor {
+                label: Some("Cells Texture View"),
+                format: Some(TextureFormat::R8Uint),
+                dimension: Some(wgpu::TextureViewDimension::D3),
+                aspect: wgpu::TextureAspect::All,
+                base_mip_level: 0,
+                mip_level_count: None,
+                base_array_layer: 0,
+                array_layer_count: None,
+            });
+        let bind_group_layout =
+            device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+                label: Some("Cell Texture Bind Group Layout"),
+                entries: &[BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Uint,
+                        view_dimension: wgpu::TextureViewDimension::D3,
+                        multisampled: false,
+                    },
+                    count: None,
+                }],
+            });
+        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Cell Texture Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::TextureView(
+                    &cells_texture_view,
+                ),
+            }],
+        });
         let compute_pipeline_layout =
             device.create_pipeline_layout(&PipelineLayoutDescriptor {
                 label: Some("Compute Pipeline Layout"),
-                bind_group_layouts: &[layout],
+                bind_group_layouts: &[&bind_group_layout],
                 push_constant_ranges: &[],
             });
 
-        device.create_compute_pipeline(&ComputePipelineDescriptor {
-            label: Some("Compute Pipeline"),
-            layout: Some(&compute_pipeline_layout),
-            module: shader,
-            entry_point: "cs_main",
-        })
+        let compute_pipeline =
+            device.create_compute_pipeline(&ComputePipelineDescriptor {
+                label: None,
+                layout: Some(&compute_pipeline_layout),
+                module: shader,
+                entry_point: "cs_main",
+            });
+        (compute_pipeline, bind_group)
     }
     fn generate_render_pipeline(
         device: &Device,
         config: &SurfaceConfiguration,
-        layout: PipelineLayout,
+        layout: &PipelineLayout,
         shader: &ShaderModule,
     ) -> RenderPipeline {
         device.create_render_pipeline(&RenderPipelineDescriptor {
             label: Some("Render Pipeline"),
-            layout: Some(&layout),
+            layout: Some(layout),
             vertex: VertexState {
                 module: shader,
                 entry_point: "vs_main",
@@ -300,8 +371,22 @@ impl State {
             self.env
                 .device
                 .create_command_encoder(&CommandEncoderDescriptor {
-                    label: Some("Render Encoder"),
+                    label: Some("Encoder"),
                 });
+        {
+            let mut compute_pass =
+                encoder.begin_compute_pass(&ComputePassDescriptor {
+                    label: Some("Compute Pass"),
+                });
+            compute_pass.set_pipeline(&self.compute_pipeline);
+            compute_pass.insert_debug_marker("TESt");
+            compute_pass.set_bind_group(0, &self.compute_bind_group, &[]);
+            compute_pass.dispatch_workgroups(
+                SIZE as u32,
+                SIZE as u32,
+                SIZE as u32,
+            );
+        }
         {
             let mut render_pass =
                 encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -335,6 +420,7 @@ impl State {
             render_pass.set_pipeline(&self.render_pipeline);
 
             render_pass.set_bind_group(0, &self.camera.bind_group, &[]);
+            render_pass.set_bind_group(1, &self.compute_bind_group, &[]);
             render_pass
                 .set_vertex_buffer(0, self.model.vertex_buffer.slice(..));
             render_pass.set_vertex_buffer(1, self.instances.buffer.slice(..));
@@ -350,7 +436,9 @@ impl State {
                 0..self.instances.data.len() as _,
             );
         }
-        self.env.queue.submit(std::iter::once(encoder.finish()));
+        self.env.queue.submit(Some(encoder.finish()));
+        self.env.device.poll(wgpu::Maintain::Wait); //?
+
         output.present();
 
         Ok(())
