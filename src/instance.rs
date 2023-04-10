@@ -62,12 +62,12 @@ impl RawInstance {
             attributes: &[
                 wgpu::VertexAttribute {
                     offset: 0,
-                    shader_location: 5,
+                    shader_location: 2,
                     format: wgpu::VertexFormat::Float32x3,
                 },
                 wgpu::VertexAttribute {
                     offset: mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
-                    shader_location: 6,
+                    shader_location: 3,
                     format: wgpu::VertexFormat::Uint32,
                 },
             ],

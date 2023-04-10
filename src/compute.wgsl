@@ -1,9 +1,22 @@
+const SIZE = 100u;
+const SIZEI32 = 100;
+
 
 struct Instance {
     @location(5) pos: vec3<f32>,
     @location(6) state: u32
 }
-//TODO
+
+struct Rule {
+    survive_mask: u32,
+    born_mask: u32,
+    max_state: u32,
+    neighborhood: u32,
+}
+
+@group(0) @binding(0)
+var<uniform> rule: Rule;
+
 @group(0) @binding(1)
 var<storage,read> cells_in: array<u32>;
 
@@ -16,18 +29,112 @@ var<storage, read_write> instances: array<Instance>;
 @compute 
 @workgroup_size(1)
 fn cs_main(@builtin(global_invocation_id) index: vec3<u32>) {
-    let index_flat = index.x * 100u * 100u + index.y * 100u + index.z;
-    let index_i32 = vec3<i32>(i32(index.x), i32(index.y), i32(index.z));
+    // let flat_index = flatten_index(index);
+    // let new_index = wrap_index(vec3<i32>(i32(index.x) - 1,i32(index.y),i32(index.z)));
+    // let flat_new_index = flatten_index(new_index);
+    // cells_out[flat_index] = cells_in[index.x];
+    // instances[flat_index].state = cells_in[index.x];
+    let flat_index = flatten_index(index);
+    let count = count_neighbors(index);
 
-    instances[index_flat].state = 1u - instances[index_flat].state;
+    let current = cells_in[flat_index];
+    if current == 1u && survive(count) {
+        } else if current == 0u && born(count) {
+            cells_out[flat_index] = rule.max_state;
+            instances[flat_index].state = rule.max_state;
+        } else if current >= 1u{
+            cells_out[flat_index] = (current - 1u);
+            instances[flat_index].state = (current - 1u);
+        }
 }
 
 
 
-fn count_neighbors(index_flat: u32) -> u32 {
-    let sum = 0u;
-    for (var i = -1; i <= 1; i++) {
+fn count_neighbors(index: vec3<u32>) -> u32 {
+    var count: u32;
+    switch rule.neighborhood {
+        case 0u: {count = moore_neighborhood(index);}
+        case 1u: {count = moore_neighborhood_non_wrapping(index);}
+        case 2u: {count = von_neumann_neigborhood(index);}
+        case 3u: {count = von_neumann_neigborhood_non_wrapping(index);}
+        default: {count = moore_neighborhood(index);}
     }
+    return count;
+}
 
+fn moore_neighborhood(index: vec3<u32>) -> u32 {
+    var sum = 0u;
+    for (var x = -1; x <= 1; x++) {
+        for (var y = -1; y <= 1; y++) {
+            for (var z = -1; z <= 1; z++) {
+                let new_index = wrap_index(vec3<i32>(i32(index.x) + x,i32(index.y) + y,i32(index.z) + z));
+                let flat_index = flatten_index(new_index);
+                if cells_in[flat_index] == rule.max_state && any(new_index != index) {
+                    sum ++;
+                }
+            }
+        }
+    }
     return sum;
+}
+
+//TODO
+fn moore_neighborhood_non_wrapping(index: vec3<u32>) -> u32 {
+    var sum = 0u;
+    for (var x = -1; x <= 1; x++) {
+        for (var y = -1; y <= 1; y++) {
+            for (var z = -1; z <= 1; z++) {
+                let new_index = wrap_index(vec3<i32>(i32(index.x) + x,i32(index.y) + y,i32(index.z) + z));
+                let flat_index = flatten_index(new_index);
+                if cells_in[flat_index] == rule.max_state && any(new_index != index) {
+                    sum ++;
+                }
+            }
+        }
+    }
+    return sum;
+}
+fn von_neumann_neigborhood(index: vec3<u32>) -> u32 {
+    var sum = 0u;
+    for (var x = -1; x <= 1; x++) {
+        for (var y = -1; y <= 1; y++) {
+            for (var z = -1; z <= 1; z++) {
+                let new_index = wrap_index(vec3<i32>(i32(index.x) + x,i32(index.y) + y,i32(index.z) + z));
+                let flat_index = flatten_index(new_index);
+                if cells_in[flat_index] == rule.max_state && any(new_index != index) {
+                    sum ++;
+                }
+            }
+        }
+    }
+    return sum;
+}
+fn von_neumann_neigborhood_non_wrapping(index: vec3<u32>) -> u32 {
+    var sum = 0u;
+    for (var x = -1; x <= 1; x++) {
+        for (var y = -1; y <= 1; y++) {
+            for (var z = -1; z <= 1; z++) {
+                let new_index = wrap_index(vec3<i32>(i32(index.x) + x,i32(index.y) + y,i32(index.z) + z));
+                let flat_index = flatten_index(new_index);
+                if cells_in[flat_index] == rule.max_state && any(new_index != index) {
+                    sum ++;
+                }
+            }
+        }
+    }
+    return sum;
+}
+
+fn wrap_index(idx: vec3<i32>) -> vec3<u32>{
+    return vec3<u32>(u32(idx.x % SIZEI32),u32(idx.y % SIZEI32) ,u32(idx.z % SIZEI32));
+}
+fn flatten_index(idx: vec3<u32>) -> u32{
+    return idx.x * SIZE * SIZE + idx.y * SIZE + idx.z;
+}
+
+fn survive(count: u32) -> bool {
+    return (rule.survive_mask & (1u << count)) != 0u;
+}
+fn born(count: u32) -> bool {
+    return (rule.born_mask & (1u << count)) != 0u;
 }

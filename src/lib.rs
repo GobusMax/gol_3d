@@ -57,7 +57,7 @@ pub struct State {
     compute_bind_groups_layout: BindGroupLayout,
     compute_bind_groups: [BindGroup; 2],
     compute_pipeline: ComputePipeline,
-    step_count: usize,
+    step_toggle: usize,
 }
 impl State {
     pub fn new(window: Window) -> Self {
@@ -93,7 +93,7 @@ impl State {
 
         let gol = GameOfLife {
             cells: GameOfLife::cells_random_init(rule.max_state, &init),
-            rule,
+            rule: rule.clone(),
             init,
         };
         //* ENVIRONMENT
@@ -134,6 +134,7 @@ impl State {
                 &env.device,
                 &compute_shader,
                 &instances.buffer,
+                &rule,
             );
         Self {
             env,
@@ -148,7 +149,7 @@ impl State {
             compute_bind_groups_layout,
             compute_bind_groups,
             compute_pipeline,
-            step_count: 0,
+            step_toggle: 0,
         }
     }
     fn init_compute(
@@ -156,26 +157,22 @@ impl State {
         device: &Device,
         shader: &ShaderModule,
         instance_buffer: &Buffer,
+        rule: &Rule,
     ) -> (ComputePipeline, [BindGroup; 2], BindGroupLayout) {
-        let cells_vec: Vec<u32> = cells
-            .clone()
-            .into_raw_vec()
-            .iter()
-            .map(|x| *x as u32)
-            .collect();
-
-        let mut buffers = Vec::with_capacity(2);
-        for _i in 0..=1 {
-            buffers.push(device.create_buffer_init(&BufferInitDescriptor {
-                label: Some("Cells Buffer {i}"),
-                contents: bytemuck::cast_slice(&cells_vec),
-                usage: BufferUsages::STORAGE,
-            }))
-        }
         let bind_group_layout =
             device.create_bind_group_layout(&BindGroupLayoutDescriptor {
                 label: Some("Cell Buffer Bind Group Layout"),
                 entries: &[
+                    BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
                     BindGroupLayoutEntry {
                         binding: 1,
                         visibility: ShaderStages::COMPUTE,
@@ -214,35 +211,13 @@ impl State {
                     },
                 ],
             });
-        let mut bind_groups = Vec::with_capacity(2);
-        for i in 0..=1 {
-            bind_groups.push(device.create_bind_group(
-                &wgpu::BindGroupDescriptor {
-                    label: Some("Cell Texture Bind Group"),
-                    layout: &bind_group_layout,
-                    entries: &[
-                        BindGroupEntry {
-                            binding: 1,
-                            resource: wgpu::BindingResource::Buffer(
-                                buffers[i].as_entire_buffer_binding(),
-                            ),
-                        },
-                        BindGroupEntry {
-                            binding: 2,
-                            resource: wgpu::BindingResource::Buffer(
-                                buffers[(i + 1) % 2].as_entire_buffer_binding(),
-                            ),
-                        },
-                        BindGroupEntry {
-                            binding: 3,
-                            resource: wgpu::BindingResource::Buffer(
-                                instance_buffer.as_entire_buffer_binding(),
-                            ),
-                        },
-                    ],
-                },
-            ))
-        }
+        let bind_groups = Self::generate_cells_buffers_bind_group(
+            cells,
+            device,
+            &bind_group_layout,
+            instance_buffer,
+            rule,
+        );
         let compute_pipeline_layout =
             device.create_pipeline_layout(&PipelineLayoutDescriptor {
                 label: Some("Compute Pipeline Layout"),
@@ -257,11 +232,7 @@ impl State {
                 module: shader,
                 entry_point: "cs_main",
             });
-        (
-            compute_pipeline,
-            bind_groups.try_into().unwrap(),
-            bind_group_layout,
-        )
+        (compute_pipeline, bind_groups, bind_group_layout)
     }
     fn generate_render_pipeline(
         device: &Device,
@@ -315,58 +286,75 @@ impl State {
         self.instances =
             instance::InstancesVec::from((&self.gol, &self.env.device));
 
-        let cells_vec: Vec<u32> = self
-            .gol
-            .cells
+        self.compute_bind_groups = State::generate_cells_buffers_bind_group(
+            &self.gol.cells,
+            &self.env.device,
+            &self.compute_bind_groups_layout,
+            &self.instances.buffer,
+            &self.gol.rule,
+        );
+    }
+    fn generate_cells_buffers_bind_group(
+        cells: &Array3<u8>,
+        device: &Device,
+        compute_bind_groups_layout: &BindGroupLayout,
+        instance_buffer: &Buffer,
+        rule: &Rule,
+    ) -> [BindGroup; 2] {
+        let cells_vec: Vec<u32> = cells
             .clone()
             .into_raw_vec()
             .iter()
             .map(|x| *x as u32)
             .collect();
+
         let mut buffers = Vec::with_capacity(2);
         for _i in 0..=1 {
-            buffers.push(self.env.device.create_buffer_init(
-                &BufferInitDescriptor {
-                    label: Some("Cells Buffer {i}"),
-                    contents: bytemuck::cast_slice(&cells_vec),
-                    usage: BufferUsages::STORAGE,
-                },
-            ))
+            buffers.push(device.create_buffer_init(&BufferInitDescriptor {
+                label: Some("Cells Buffer {i}"),
+                contents: bytemuck::cast_slice(&cells_vec),
+                usage: BufferUsages::STORAGE,
+            }))
         }
-        for (i, bg) in self.compute_bind_groups.iter_mut().enumerate() {
-            *bg =
-                self.env
-                    .device
-                    .create_bind_group(&wgpu::BindGroupDescriptor {
-                        label: Some("Cell Texture Bind Group"),
-                        layout: &self.compute_bind_groups_layout,
-                        entries: &[
-                            BindGroupEntry {
-                                binding: 1,
-                                resource: wgpu::BindingResource::Buffer(
-                                    buffers[i].as_entire_buffer_binding(),
-                                ),
-                            },
-                            BindGroupEntry {
-                                binding: 2,
-                                resource: wgpu::BindingResource::Buffer(
-                                    buffers[(i + 1) % 2]
-                                        .as_entire_buffer_binding(),
-                                ),
-                            },
-                            BindGroupEntry {
-                                binding: 3,
-                                resource: wgpu::BindingResource::Buffer(
-                                    self.instances
-                                        .buffer
-                                        .as_entire_buffer_binding(),
-                                ),
-                            },
-                        ],
-                    })
-        }
-    }
 
+        (0..=1)
+            .map(|i| {
+                device.create_bind_group(&wgpu::BindGroupDescriptor {
+                    label: Some("Compute Bind Group"),
+                    layout: compute_bind_groups_layout,
+                    entries: &[
+                        BindGroupEntry {
+                            binding: 0,
+                            resource: wgpu::BindingResource::Buffer(
+                                rule.as_buffer(device)
+                                    .as_entire_buffer_binding(),
+                            ),
+                        },
+                        BindGroupEntry {
+                            binding: 1,
+                            resource: wgpu::BindingResource::Buffer(
+                                buffers[i].as_entire_buffer_binding(),
+                            ),
+                        },
+                        BindGroupEntry {
+                            binding: 2,
+                            resource: wgpu::BindingResource::Buffer(
+                                buffers[(i + 1) % 2].as_entire_buffer_binding(),
+                            ),
+                        },
+                        BindGroupEntry {
+                            binding: 3,
+                            resource: wgpu::BindingResource::Buffer(
+                                instance_buffer.as_entire_buffer_binding(),
+                            ),
+                        },
+                    ],
+                })
+            })
+            .collect::<Vec<BindGroup>>()
+            .try_into()
+            .unwrap()
+    }
     pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
         if new_size.width > 0 && new_size.height > 0 {
             self.env.size = new_size;
@@ -468,7 +456,6 @@ impl State {
                 }
                 Err(e) => eprintln!("{e:?}"),
             }
-            self.step_count += 1;
         } else {
             match self.render_only() {
                 Ok(_) => {}
@@ -499,10 +486,11 @@ impl State {
         compute_pass.set_pipeline(&self.compute_pipeline);
         compute_pass.set_bind_group(
             0,
-            &self.compute_bind_groups[self.step_count % 2],
+            &self.compute_bind_groups[self.step_toggle],
             &[],
         );
         compute_pass.dispatch_workgroups(SIZE as u32, SIZE as u32, SIZE as u32);
+        self.step_toggle = (self.step_toggle + 1) % 2;
     }
     fn update_game_and_render(&mut self) -> Result<(), wgpu::SurfaceError> {
         let output = self.env.surface.get_current_texture()?;
@@ -586,6 +574,7 @@ impl State {
             0,
             0..self.instances.data.len() as _,
         );
+
         Ok(())
     }
 }

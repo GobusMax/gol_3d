@@ -6,11 +6,14 @@ use ndarray_rand::{
     rand_distr::{Distribution, Standard},
 };
 use nom::Finish;
+use wgpu::{
+    util::{BufferInitDescriptor, DeviceExt},
+    Buffer, BufferUsages, Device,
+};
 
 use crate::rule_parse;
 
-#[allow(dead_code)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum Neighborhood {
     Moore,
     MooreNonWrapping,
@@ -40,7 +43,7 @@ impl Distribution<Neighborhood> for Standard {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Rule {
     pub survive_mask: u32,
     pub born_mask: u32,
@@ -49,7 +52,6 @@ pub struct Rule {
 }
 
 impl Rule {
-    #[allow(dead_code)]
     pub fn new<T: ToBitMask, U: ToBitMask>(
         survive: T,
         born: U,
@@ -72,6 +74,13 @@ impl Rule {
                 .sample(rand::distributions::Standard),
         }
     }
+    pub fn as_buffer(&self, device: &Device) -> Buffer {
+        device.create_buffer_init(&BufferInitDescriptor {
+            label: Some("Rule Buffer"),
+            contents: &bytemuck::cast::<_, [u8; 16]>(RuleRaw::from(self)),
+            usage: BufferUsages::UNIFORM,
+        })
+    }
     pub fn survive(&self, count: u8) -> bool {
         self.survive_mask & (1 << count) != 0
     }
@@ -85,18 +94,19 @@ impl Rule {
     ) -> u8 {
         match self.neighborhood {
             Neighborhood::MooreNonWrapping => {
-                self.moore_neighborhood(cells, idx)
+                self.moore_neighborhood_non_wrapping(cells, idx)
             }
-            Neighborhood::Moore => self.moore_neighborhood_wrapping(cells, idx),
-            Neighborhood::VonNeumannNonWrapping => {
+            Neighborhood::Moore => self.moore_neighborhood(cells, idx),
+            Neighborhood::VonNeumann => {
                 self.von_neumann_neigborhood(cells, idx)
             }
-            Neighborhood::VonNeumann => {
-                self.von_neumann_neigborhood_wrapping(cells, idx)
+
+            Neighborhood::VonNeumannNonWrapping => {
+                self.von_neumann_neigborhood_non_wrapping(cells, idx)
             }
         }
     }
-    fn moore_neighborhood(
+    fn moore_neighborhood_non_wrapping(
         &self,
         cells: &Array3<u8>,
         index: (usize, usize, usize),
@@ -130,7 +140,7 @@ impl Rule {
         sum
     }
 
-    fn moore_neighborhood_wrapping(
+    fn moore_neighborhood(
         &self,
         cells: &Array3<u8>,
         index: (usize, usize, usize),
@@ -156,7 +166,7 @@ impl Rule {
         sum
     }
 
-    fn von_neumann_neigborhood(
+    fn von_neumann_neigborhood_non_wrapping(
         &self,
         cells: &Array3<u8>,
         index: (usize, usize, usize),
@@ -196,7 +206,7 @@ impl Rule {
         }
         sum
     }
-    fn von_neumann_neigborhood_wrapping(
+    fn von_neumann_neigborhood(
         &self,
         cells: &Array3<u8>,
         idx: (usize, usize, usize),
@@ -249,7 +259,7 @@ impl Display for Rule {
             "{}/{}/{}/{}",
             bit_run_string(self.survive_mask as u64),
             bit_run_string(self.born_mask as u64),
-            self.max_state+1,
+            self.max_state + 1,
             self.neighborhood
         )
     }
@@ -355,4 +365,29 @@ fn bit_run_string(n: u64) -> String {
     }
 
     res
+}
+
+#[repr(C)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+struct RuleRaw {
+    pub survive_mask: u32,
+    pub born_mask: u32,
+    pub max_state: u32,
+    pub neighborhood: u32,
+}
+impl From<&Rule> for RuleRaw {
+    fn from(rule: &Rule) -> Self {
+        let neighborhood = match rule.neighborhood {
+            Neighborhood::Moore => 0,
+            Neighborhood::MooreNonWrapping => 1,
+            Neighborhood::VonNeumann => 2,
+            Neighborhood::VonNeumannNonWrapping => 3,
+        };
+        Self {
+            survive_mask: rule.survive_mask,
+            born_mask: rule.born_mask,
+            max_state: rule.max_state as u32,
+            neighborhood,
+        }
+    }
 }

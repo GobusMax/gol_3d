@@ -3,4 +3,4 @@
   * [ ] Rule Display (egui ?)
   * [ ] State different Color
   * [ ] workgroup_size
-  * [ ] fragment discard
+  * [ ] SIZE as Uniform

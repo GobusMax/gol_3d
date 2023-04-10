@@ -1,7 +1,6 @@
+use crate::{rule::Rule, Init};
 use ndarray::Array3;
 use ndarray_rand::RandomExt;
-
-use crate::{rule::Rule, Init};
 
 pub const SIZE: usize = 100;
 pub struct GameOfLife {
