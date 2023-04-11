@@ -1,11 +1,12 @@
 use gol_3d::State;
+
 use std::time::Instant;
+
 use winit::{
     event::{ElementState, Event, VirtualKeyCode, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
 };
-
 fn main() {
     let mut timer = Instant::now();
     env_logger::init();
@@ -22,6 +23,7 @@ fn main() {
         .set_cursor_grab(winit::window::CursorGrabMode::Confined)
         .unwrap();
     state.env.window.set_cursor_visible(false);
+
     event_loop.run(move |event, _, control_flow| match event {
         Event::WindowEvent {
             ref event,
@@ -57,18 +59,7 @@ fn main() {
         {
             let delta = timer.elapsed().as_secs_f32();
             timer = Instant::now();
-            state.update(delta);
-            match state.render() {
-                Ok(_) => {}
-                // Reconfigure the surface if lost
-                Err(wgpu::SurfaceError::Lost) => state.resize(state.env.size),
-                // The system is out of memory, we should probably quit
-                Err(wgpu::SurfaceError::OutOfMemory) => {
-                    *control_flow = ControlFlow::Exit;
-                }
-                // All other errors (Outdated, Timeout) should be resolved by the next frame
-                Err(e) => eprintln!("{e:?}"),
-            }
+            state.update(delta, control_flow);
             // println!(
             //     "{}",
             //     1. / delta

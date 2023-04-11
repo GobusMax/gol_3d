@@ -1,6 +1,6 @@
-  * [ ] Rendering
   * [ ] Compute-Shader-Gol
-  * [ ] FrameRate
-  * [ ] Rule Display
-  * [ ] Config
-  * [ ] egui
+  * [ ] FrameRate Text (egui?)
+  * [ ] Rule Display (egui ?)
+  * [ ] State different Color
+  * [ ] workgroup_size
+  * [ ] SIZE as Uniform
