@@ -1,6 +1,6 @@
-const SIZE = 100u;
-const SIZEI32 = 100;
-
+//TODO
+const SIZE = 200u;
+const SIZEI32 = 200;
 
 struct Instance {
     @location(5) pos: vec3<f32>,
@@ -27,7 +27,7 @@ var<storage,read_write> cells_out: array<u32>;
 var<storage, read_write> instances: array<Instance>;
 
 @compute 
-@workgroup_size(1)
+@workgroup_size(4,4,4)
 fn cs_main(@builtin(global_invocation_id) index: vec3<u32>) {
     let flat_index = flatten_index(index);
     let count = count_neighbors(index);

@@ -2,7 +2,7 @@ use crate::{rule::Rule, Init};
 use ndarray::Array3;
 use ndarray_rand::RandomExt;
 
-pub const SIZE: usize = 100;
+pub const SIZE: usize = 200;
 pub struct GameOfLife {
     pub cells: Array3<u8>,
     pub rule: Rule,
@@ -28,7 +28,7 @@ impl GameOfLife {
                     (partial_size, partial_size, partial_size),
                     ndarray_rand::rand_distr::Bernoulli::new(prob).unwrap(),
                 )
-                .map(|v| (*v as u8) * max_state),
+                .map(|v| u8::from(*v) * max_state),
             );
         cells
     }

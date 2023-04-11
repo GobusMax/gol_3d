@@ -358,9 +358,9 @@ fn bit_run_string(n: u64) -> String {
             res += ",";
         }
         if start == end {
-            res += &format!("{}", start);
+            res += &format!("{start}");
         } else {
-            res += &format!("{}-{}", start, end);
+            res += &format!("{start}-{end}");
         }
     }
 

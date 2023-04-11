@@ -41,11 +41,10 @@ fn vs_main(
 
 
 
-    @fragment
+@fragment
 fn fs_main(in: VertexOutput) -> @ location(0) vec4<f32> {
     if in.state == 0u {
         discard;
-    } else {
-        return in.color * in.shade;
     }
+        return in.color * in.shade;
 }

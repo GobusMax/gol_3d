@@ -1,4 +1,9 @@
-use wgpu::*;
+use wgpu::{
+    AddressMode, CompareFunction, Device, Extent3d, FilterMode, Sampler,
+    SamplerDescriptor, SurfaceConfiguration, TextureDescriptor,
+    TextureDimension, TextureFormat, TextureUsages, TextureView,
+    TextureViewDescriptor,
+};
 pub struct Texture {
     pub texture: wgpu::Texture,
     pub view: TextureView,

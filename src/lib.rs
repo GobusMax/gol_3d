@@ -11,7 +11,6 @@ pub(crate) mod texture;
 
 use std::fs;
 
-// use anyhow::Ok;
 use camera::Camera;
 use clap::Parser;
 use environment::Environment;
@@ -39,6 +38,8 @@ use winit::{
     window::Window,
 };
 
+const WORKGROUP_SIZE: u32 = 4;
+
 pub struct Init {
     pub size: usize,
     pub density: f64,
@@ -47,11 +48,11 @@ pub struct Init {
 pub struct State {
     pub env: environment::Environment,
     pub camera: Camera,
+    pub gol: GameOfLife,
     model: Model,
     instances: instance::InstancesVec,
     depth_texture: texture::Texture,
     render_pipeline: RenderPipeline,
-    pub gol: GameOfLife,
     paused: bool,
     cursor_grab: bool,
     compute_bind_groups_layout: BindGroupLayout,
@@ -314,7 +315,7 @@ impl State {
                 label: Some("Cells Buffer {i}"),
                 contents: bytemuck::cast_slice(&cells_vec),
                 usage: BufferUsages::STORAGE,
-            }))
+            }));
         }
 
         (0..=1)
@@ -409,6 +410,9 @@ impl State {
                 );
                 self.update_cells_buffers();
                 println!("{}", self.gol.rule);
+                self.env
+                    .window
+                    .set_title(&format!("Rule: {}", self.gol.rule));
                 return true;
             }
             WindowEvent::KeyboardInput { input, .. }
@@ -447,8 +451,8 @@ impl State {
                 bytemuck::cast_slice(&[self.camera.uniform.view_proj]),
             );
         }
-        if !self.paused {
-            match self.update_game_and_render() {
+        if self.paused {
+            match self.render_only() {
                 Ok(_) => {}
                 Err(wgpu::SurfaceError::Lost) => self.resize(self.env.size),
                 Err(wgpu::SurfaceError::OutOfMemory) => {
@@ -457,7 +461,7 @@ impl State {
                 Err(e) => eprintln!("{e:?}"),
             }
         } else {
-            match self.render_only() {
+            match self.update_game_and_render() {
                 Ok(_) => {}
                 Err(wgpu::SurfaceError::Lost) => self.resize(self.env.size),
                 Err(wgpu::SurfaceError::OutOfMemory) => {
@@ -489,7 +493,12 @@ impl State {
             &self.compute_bind_groups[self.step_toggle],
             &[],
         );
-        compute_pass.dispatch_workgroups(SIZE as u32, SIZE as u32, SIZE as u32);
+        //TODO
+        compute_pass.dispatch_workgroups(
+            SIZE as u32 / WORKGROUP_SIZE,
+            SIZE as u32 / WORKGROUP_SIZE,
+            SIZE as u32 / WORKGROUP_SIZE,
+        );
         self.step_toggle = (self.step_toggle + 1) % 2;
     }
     fn update_game_and_render(&mut self) -> Result<(), wgpu::SurfaceError> {
@@ -502,23 +511,23 @@ impl State {
                 });
 
         self.update_game_call(&mut encoder);
-        self.render_call(&mut encoder, &output)?;
+
+        self.render_call(&mut encoder, &output);
 
         self.env.queue.submit(Some(encoder.finish()));
         output.present();
         Ok(())
     }
     fn render_only(&mut self) -> Result<(), wgpu::SurfaceError> {
-        let output = self.env.surface.get_current_texture()?;
         let mut encoder =
             self.env
                 .device
                 .create_command_encoder(&CommandEncoderDescriptor {
                     label: Some("Encoder"),
                 });
+        let output = self.env.surface.get_current_texture()?;
 
-        self.render_call(&mut encoder, &output)?;
-
+        self.render_call(&mut encoder, &output);
         self.env.queue.submit(Some(encoder.finish()));
         output.present();
         Ok(())
@@ -527,7 +536,7 @@ impl State {
         &mut self,
         encoder: &mut CommandEncoder,
         output: &SurfaceTexture,
-    ) -> Result<(), wgpu::SurfaceError> {
+    ) {
         let view = output
             .texture
             .create_view(&TextureViewDescriptor::default());
@@ -574,7 +583,5 @@ impl State {
             0,
             0..self.instances.data.len() as _,
         );
-
-        Ok(())
     }
 }
