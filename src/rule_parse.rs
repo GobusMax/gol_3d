@@ -3,9 +3,9 @@ use nom::{
     bytes::complete::{tag, take_while1},
     character,
     combinator::{map, map_res, opt, value},
-    multi::fold_many0,
+    multi::separated_list0,
     number,
-    sequence::{preceded, separated_pair, terminated, tuple},
+    sequence::{preceded, separated_pair, tuple},
     IResult,
 };
 
@@ -22,8 +22,9 @@ fn bitmask(input: &str) -> IResult<&str, u32> {
                 u32::from_str_radix(s, 2)
             }),
         ),
-        fold_many0(
-            terminated(
+        map(
+            separated_list0(
+                tag(","),
                 alt((
                     // Range of bits
                     map(
@@ -37,12 +38,8 @@ fn bitmask(input: &str) -> IResult<&str, u32> {
                     // Single bit
                     map(character::complete::u8, |n| 1 << n),
                 )),
-                // Not quite correct, better would be a `separated_fold0`, like
-                // `separated_list0`, but that doesn't exist :(
-                opt(tag(",")),
             ),
-            || 0,
-            |acc, m| (acc | m),
+            |l| l.into_iter().fold(0, |acc, m| acc | m),
         ),
     ))(input)
 }
