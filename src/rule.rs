@@ -93,10 +93,10 @@ impl Rule {
         idx: (usize, usize, usize),
     ) -> u8 {
         match self.neighborhood {
+            Neighborhood::Moore => self.moore_neighborhood(cells, idx),
             Neighborhood::MooreNonWrapping => {
                 self.moore_neighborhood_non_wrapping(cells, idx)
             }
-            Neighborhood::Moore => self.moore_neighborhood(cells, idx),
             Neighborhood::VonNeumann => {
                 self.von_neumann_neigborhood(cells, idx)
             }

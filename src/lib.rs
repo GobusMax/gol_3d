@@ -320,7 +320,7 @@ impl State {
         (0..=1)
             .map(|i| {
                 device.create_bind_group(&wgpu::BindGroupDescriptor {
-                    label: Some("Compute Bind Group"),
+                    label: Some("Compute Bind Group {i}"),
                     layout: compute_bind_groups_layout,
                     entries: &[
                         BindGroupEntry {

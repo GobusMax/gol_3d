@@ -29,23 +29,24 @@ var<storage, read_write> instances: array<Instance>;
 @compute 
 @workgroup_size(1)
 fn cs_main(@builtin(global_invocation_id) index: vec3<u32>) {
-    // let flat_index = flatten_index(index);
-    // let new_index = wrap_index(vec3<i32>(i32(index.x) - 1,i32(index.y),i32(index.z)));
-    // let flat_new_index = flatten_index(new_index);
-    // cells_out[flat_index] = cells_in[index.x];
-    // instances[flat_index].state = cells_in[index.x];
     let flat_index = flatten_index(index);
     let count = count_neighbors(index);
 
     let current = cells_in[flat_index];
     if current == 1u && survive(count) {
+        cells_out[flat_index] = current;
+        instances[flat_index].state = current;
         } else if current == 0u && born(count) {
             cells_out[flat_index] = rule.max_state;
             instances[flat_index].state = rule.max_state;
         } else if current >= 1u{
             cells_out[flat_index] = (current - 1u);
             instances[flat_index].state = (current - 1u);
+        } else {
+            cells_out[flat_index] =  0u;
+            instances[flat_index].state = 0u;
         }
+
 }
 
 
@@ -126,7 +127,7 @@ fn von_neumann_neigborhood_non_wrapping(index: vec3<u32>) -> u32 {
 }
 
 fn wrap_index(idx: vec3<i32>) -> vec3<u32>{
-    return vec3<u32>(u32(idx.x % SIZEI32),u32(idx.y % SIZEI32) ,u32(idx.z % SIZEI32));
+    return vec3<u32>(u32((idx.x + SIZEI32) % SIZEI32),u32((idx.y + SIZEI32) % SIZEI32) ,u32((idx.z + SIZEI32) % SIZEI32));
 }
 fn flatten_index(idx: vec3<u32>) -> u32{
     return idx.x * SIZE * SIZE + idx.y * SIZE + idx.z;
