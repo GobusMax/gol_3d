@@ -52,7 +52,7 @@ InitDensity   ::= Float
 
 Mask     ::= BitMask | ListMask
 BitMask  ::= "0b" ( "0" | "1" ) { "0" | "1" }
-ListMask ::= [ Integer | Range ] { "," ( Integer | Range ) } [ "," ]
+ListMask ::= [ Integer | Range ] { "," ( Integer | Range ) }
 
 Range   ::= Integer "-" Integer
 ```
