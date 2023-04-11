@@ -24,6 +24,7 @@ cargo run --release -- --help
 | RETURN | Step the simulation      |
 | R      | Reset to initial state   |
 | Q      | Generate new random rule |
+| /      | Toggle mouse capture     |
 
 ## Rule Format
 
