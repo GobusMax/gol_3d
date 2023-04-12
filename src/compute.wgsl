@@ -26,6 +26,8 @@ var<storage,read_write> cells_out: array<u32>;
 @group(0) @binding(3)
 var<storage, read_write> instances: array<Instance>;
 
+@group(0) @binding(4)
+var<storage, read_write> atomic_counter: atomic<u32>;
 @compute 
 @workgroup_size(4,4,4)
 fn cs_main(@builtin(global_invocation_id) index: vec3<u32>) {
@@ -38,15 +40,18 @@ fn cs_main(@builtin(global_invocation_id) index: vec3<u32>) {
         instances[flat_index].state = current;
         } else if current == 0u && born(count) {
             cells_out[flat_index] = rule.max_state;
-            instances[flat_index].state = rule.max_state;
+            // instances[flat_index].state = rule.max_state;
         } else if current >= 1u{
             cells_out[flat_index] = (current - 1u);
-            instances[flat_index].state = (current - 1u);
+            // instances[flat_index].state = (current - 1u);
         } else {
             cells_out[flat_index] =  0u;
-            instances[flat_index].state = 0u;
+            // instances[flat_index].state = 0u;
         }
-
+    if cells_out[flat_index] != 0u{
+        let instance_index = atomicAdd(&atomic_counter, 1u);
+        instances[instance_index] =  Instance(vec3<f32>(index),cells_out[flat_index]);
+    }
 }
 
 

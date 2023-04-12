@@ -42,9 +42,7 @@ impl Environment {
             )
             .await
             .unwrap();
-        println!("Limits: {:?}\n", device.limits());
-        println!("Features: {:?}\n", adapter.limits().max_push_constant_size);
-        println!("Features: {:?}\n", surface.get_capabilities(&adapter));
+        // println!("Features: {:?}\n", adapter.limits());
 
         let surface_caps = surface.get_capabilities(&adapter);
 

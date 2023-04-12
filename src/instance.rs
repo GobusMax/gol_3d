@@ -4,7 +4,7 @@ use wgpu::{
     Buffer, BufferUsages, Device,
 };
 
-use crate::game_of_life::GameOfLife;
+use crate::game_of_life::{GameOfLife, SIZE};
 
 pub struct InstancesVec {
     pub data: Vec<Instance>,
@@ -17,12 +17,27 @@ impl From<(&GameOfLife, &Device)> for InstancesVec {
         let instances: Vec<Instance> = gol
             .cells
             .indexed_iter()
-            .map(|(i, c)| Instance {
-                position: vec3(i.0 as _, i.1 as _, i.2 as _),
-                state: *c as _,
+            .filter_map(|(i, c)| {
+                if *c != 0 {
+                    Some(Instance {
+                        position: vec3(i.0 as _, i.1 as _, i.2 as _),
+                        state: *c as _,
+                    })
+                } else {
+                    None
+                }
             })
             .collect();
-        let raw = instances.iter().map(RawInstance::new).collect::<Vec<_>>();
+        let mut raw =
+            instances.iter().map(RawInstance::new).collect::<Vec<_>>();
+        raw.resize(
+            SIZE * SIZE * SIZE,
+            RawInstance {
+                pos: [0.; 3],
+                state: 0,
+            },
+        );
+
         let buffer = device.create_buffer_init(&BufferInitDescriptor {
             label: Some("Instance Buffer"),
             contents: bytemuck::cast_slice(&raw),
