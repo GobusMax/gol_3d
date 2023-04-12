@@ -1,5 +1,6 @@
 pub(crate) mod args;
 pub(crate) mod camera;
+mod compute_env;
 pub(crate) mod cool_rules;
 pub(crate) mod environment;
 pub(crate) mod game_of_life;
@@ -13,30 +14,27 @@ use std::fs;
 
 use camera::Camera;
 use clap::Parser;
+use compute_env::ComputeEnv;
 use environment::Environment;
 use game_of_life::{GameOfLife, SIZE};
-use instance::InstancesVec;
+
 use model::{Model, Vertex};
-use ndarray::Array3;
+
 use pollster::FutureExt;
 use rule::Rule;
 use wgpu::{
     include_wgsl,
     util::{BufferInitDescriptor, DeviceExt},
-    BindGroup, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
-    BindGroupLayoutEntry, BlendState, Buffer, BufferAddress, BufferDescriptor,
-    BufferUsages, ColorTargetState, ColorWrites, CommandEncoder,
-    CommandEncoderDescriptor, ComputePassDescriptor, ComputePipeline,
-    ComputePipelineDescriptor, DepthBiasState, DepthStencilState, Device,
-    FragmentState, MultisampleState, Operations, PipelineLayout,
-    PipelineLayoutDescriptor, PrimitiveState, PrimitiveTopology,
-    RenderPipeline, RenderPipelineDescriptor, ShaderModule, ShaderStages,
-    StencilState, SurfaceConfiguration, SurfaceTexture, TextureViewDescriptor,
-    VertexState,
+    BindGroup, BindGroupEntry, BlendState, Buffer, BufferAddress,
+    BufferDescriptor, BufferUsages, ColorTargetState, ColorWrites,
+    CommandEncoderDescriptor, ComputePassDescriptor, DepthBiasState,
+    DepthStencilState, Device, FragmentState, MultisampleState, Operations,
+    PipelineLayout, PipelineLayoutDescriptor, PrimitiveState,
+    PrimitiveTopology, RenderPipeline, RenderPipelineDescriptor, ShaderModule,
+    StencilState, SurfaceConfiguration, TextureViewDescriptor, VertexState,
 };
 use winit::{
     event::{ElementState, VirtualKeyCode, WindowEvent},
-    event_loop::ControlFlow,
     window::Window,
 };
 
@@ -57,12 +55,7 @@ pub struct State {
     render_pipeline: RenderPipeline,
     paused: bool,
     cursor_grab: bool,
-    compute_bind_groups_layout: BindGroupLayout,
-    compute_bind_groups: [BindGroup; 2],
-    compute_pipeline: ComputePipeline,
-    step_toggle: usize,
-    atomic_counter_buffer: Buffer,
-    num_instances: u32,
+    compute_env: ComputeEnv,
 }
 impl State {
     pub fn new(window: Window) -> Self {
@@ -90,15 +83,10 @@ impl State {
         if let Some(d) = args.init_density {
             init.density = d;
         }
-        // let rule = cool_rules::as_rule::GLIDER_HEAVEN;
-        // let rule = cool_rules::as_str::SHELLS.parse::<Rule>().urnwrap();
-        // let rule = cool_rules::as_str::PERIODIC_FUNKY.parse::<Rule>().unwrap();
-
-        // println!("{}/{}/{}", rule, init.size, init.density);
 
         let gol = GameOfLife {
             cells: GameOfLife::cells_random_init(rule.max_state, &init),
-            rule: rule.clone(),
+            rule,
             init,
         };
         //* ENVIRONMENT
@@ -130,138 +118,21 @@ impl State {
             &render_pipeline_layout,
             &draw_shader,
         );
-        let compute_shader = env
-            .device
-            .create_shader_module(include_wgsl!("compute.wgsl"));
-        let (
-            compute_pipeline,
-            compute_bind_groups,
-            compute_bind_groups_layout,
-            atomic_counter_buffer,
-        ) = Self::init_compute(
-            &gol.cells,
-            &env.device,
-            &compute_shader,
-            &instances,
-            &rule,
-        );
+
+        let compute_env = ComputeEnv::new(&gol, &env.device, &instances);
+
         Self {
             env,
             camera,
             model,
-            num_instances: instances.data.len() as u32,
             instances,
             depth_texture,
             render_pipeline,
             gol,
             paused: true,
             cursor_grab: true,
-            compute_bind_groups_layout,
-            compute_bind_groups,
-            compute_pipeline,
-            step_toggle: 0,
-            atomic_counter_buffer,
+            compute_env,
         }
-    }
-    fn init_compute(
-        cells: &Array3<u8>,
-        device: &Device,
-        shader: &ShaderModule,
-        instances: &InstancesVec,
-        rule: &Rule,
-    ) -> (ComputePipeline, [BindGroup; 2], BindGroupLayout, Buffer) {
-        let bind_group_layout =
-            device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-                label: Some("Cell Buffer Bind Group Layout"),
-                entries: &[
-                    BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage {
-                                read_only: true,
-                            },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage {
-                                read_only: false,
-                            },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage {
-                                read_only: false,
-                            },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    BindGroupLayoutEntry {
-                        binding: 4,
-                        visibility: ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage {
-                                read_only: false,
-                            },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                ],
-            });
-        let (bind_groups, atomic_counter_buffer) =
-            Self::generate_cells_buffers_bind_group(
-                cells,
-                device,
-                &bind_group_layout,
-                instances,
-                rule,
-            );
-        let compute_pipeline_layout =
-            device.create_pipeline_layout(&PipelineLayoutDescriptor {
-                label: Some("Compute Pipeline Layout"),
-                bind_group_layouts: &[&bind_group_layout],
-                push_constant_ranges: &[],
-            });
-
-        let compute_pipeline =
-            device.create_compute_pipeline(&ComputePipelineDescriptor {
-                label: None,
-                layout: Some(&compute_pipeline_layout),
-                module: shader,
-                entry_point: "cs_main",
-            });
-        (
-            compute_pipeline,
-            bind_groups,
-            bind_group_layout,
-            atomic_counter_buffer,
-        )
     }
     fn generate_render_pipeline(
         device: &Device,
@@ -314,24 +185,16 @@ impl State {
     fn update_cells_buffers(&mut self) {
         self.instances =
             instance::InstancesVec::from((&self.gol, &self.env.device));
-        self.num_instances = self.instances.data.len() as u32;
-        (self.compute_bind_groups, self.atomic_counter_buffer) =
-            State::generate_cells_buffers_bind_group(
-                &self.gol.cells,
-                &self.env.device,
-                &self.compute_bind_groups_layout,
-                &self.instances,
-                &self.gol.rule,
-            );
+        self.compute_env.num_instances = self.instances.data.len() as u32;
+        (
+            self.compute_env.bind_groups,
+            self.compute_env.atomic_counter_buffer,
+        ) = State::generate_cells_buffers_bind_group(self);
     }
-    fn generate_cells_buffers_bind_group(
-        cells: &Array3<u8>,
-        device: &Device,
-        compute_bind_groups_layout: &BindGroupLayout,
-        instances: &InstancesVec,
-        rule: &Rule,
-    ) -> ([BindGroup; 2], Buffer) {
-        let cells_vec: Vec<u32> = cells
+    fn generate_cells_buffers_bind_group(&self) -> ([BindGroup; 2], Buffer) {
+        let cells_vec: Vec<u32> = self
+            .gol
+            .cells
             .clone()
             .into_raw_vec()
             .iter()
@@ -340,66 +203,78 @@ impl State {
 
         let mut buffers = Vec::with_capacity(2);
         for _i in 0..=1 {
-            buffers.push(device.create_buffer_init(&BufferInitDescriptor {
-                label: Some("Cells Buffer {i}"),
-                contents: bytemuck::cast_slice(&cells_vec),
-                usage: BufferUsages::STORAGE,
-            }));
+            buffers.push(self.env.device.create_buffer_init(
+                &BufferInitDescriptor {
+                    label: Some("Cells Buffer {i}"),
+                    contents: bytemuck::cast_slice(&cells_vec),
+                    usage: BufferUsages::STORAGE,
+                },
+            ));
         }
         let atomic_counter_buffer =
-            device.create_buffer_init(&BufferInitDescriptor {
+            self.env.device.create_buffer_init(&BufferInitDescriptor {
                 label: None,
-                contents: bytemuck::bytes_of(&(instances.data.len() as u32)),
+                contents: bytemuck::bytes_of(
+                    &(self.instances.data.len() as u32),
+                ),
                 usage: BufferUsages::STORAGE
                     | BufferUsages::COPY_SRC
                     | BufferUsages::COPY_DST,
             });
         let bind_groups = (0..=1)
             .map(|i| {
-                device.create_bind_group(&wgpu::BindGroupDescriptor {
-                    label: Some("Compute Bind Group {i}"),
-                    layout: compute_bind_groups_layout,
-                    entries: &[
-                        BindGroupEntry {
-                            binding: 0,
-                            resource: wgpu::BindingResource::Buffer(
-                                rule.as_buffer(device)
-                                    .as_entire_buffer_binding(),
-                            ),
-                        },
-                        BindGroupEntry {
-                            binding: 1,
-                            resource: wgpu::BindingResource::Buffer(
-                                buffers[i].as_entire_buffer_binding(),
-                            ),
-                        },
-                        BindGroupEntry {
-                            binding: 2,
-                            resource: wgpu::BindingResource::Buffer(
-                                buffers[(i + 1) % 2].as_entire_buffer_binding(),
-                            ),
-                        },
-                        BindGroupEntry {
-                            binding: 3,
-                            resource: wgpu::BindingResource::Buffer(
-                                instances.buffer.as_entire_buffer_binding(),
-                            ),
-                        },
-                        BindGroupEntry {
-                            binding: 4,
-                            resource: wgpu::BindingResource::Buffer(
-                                atomic_counter_buffer
-                                    .as_entire_buffer_binding(),
-                            ),
-                        },
-                    ],
-                })
+                self.env
+                    .device
+                    .create_bind_group(&wgpu::BindGroupDescriptor {
+                        label: Some("Compute Bind Group {i}"),
+                        layout: &self.compute_env.bind_groups_layout,
+                        entries: &[
+                            BindGroupEntry {
+                                binding: 0,
+                                resource: wgpu::BindingResource::Buffer(
+                                    self.gol
+                                        .rule
+                                        .as_buffer(&self.env.device)
+                                        .as_entire_buffer_binding(),
+                                ),
+                            },
+                            BindGroupEntry {
+                                binding: 1,
+                                resource: wgpu::BindingResource::Buffer(
+                                    buffers[i].as_entire_buffer_binding(),
+                                ),
+                            },
+                            BindGroupEntry {
+                                binding: 2,
+                                resource: wgpu::BindingResource::Buffer(
+                                    buffers[(i + 1) % 2]
+                                        .as_entire_buffer_binding(),
+                                ),
+                            },
+                            BindGroupEntry {
+                                binding: 3,
+                                resource: wgpu::BindingResource::Buffer(
+                                    self.instances
+                                        .buffer
+                                        .as_entire_buffer_binding(),
+                                ),
+                            },
+                            BindGroupEntry {
+                                binding: 4,
+                                resource: wgpu::BindingResource::Buffer(
+                                    atomic_counter_buffer
+                                        .as_entire_buffer_binding(),
+                                ),
+                            },
+                        ],
+                    })
             })
             .collect::<Vec<BindGroup>>()
             .try_into()
             .unwrap();
         (bind_groups, atomic_counter_buffer)
     }
+
     pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
         if new_size.width > 0 && new_size.height > 0 {
             self.env.size = new_size;
@@ -422,7 +297,7 @@ impl State {
                     && input.state == ElementState::Released
                     && self.paused =>
             {
-                self.update_game_only();
+                self.update_game_call();
                 return true;
             }
             WindowEvent::KeyboardInput { input, .. }
@@ -486,7 +361,7 @@ impl State {
         self.camera.controller.process_events(event)
     }
 
-    pub fn update(&mut self, delta: f32, control_flow: &mut ControlFlow) {
+    pub fn update(&mut self, delta: f32) {
         if self.cursor_grab {
             self.camera.update(delta);
             self.env.queue.write_buffer(
@@ -496,29 +371,13 @@ impl State {
             );
         }
         if self.paused {
-            match self.render_only() {
-                Ok(_) => {}
-                Err(wgpu::SurfaceError::Lost) => self.resize(self.env.size),
-                Err(wgpu::SurfaceError::OutOfMemory) => {
-                    *control_flow = ControlFlow::Exit;
-                }
-                Err(e) => eprintln!("{e:?}"),
-            }
+            self.render_call();
         } else {
-            match self.update_game_and_render() {
-                Ok(_) => {}
-                Err(wgpu::SurfaceError::Lost) => self.resize(self.env.size),
-                Err(wgpu::SurfaceError::OutOfMemory) => {
-                    *control_flow = ControlFlow::Exit;
-                }
-                Err(e) => eprintln!("{e:?}"),
-            }
+            self.update_game_call();
+            self.render_call();
         }
     }
 
-    fn update_game_only(&mut self) {
-        self.update_game_call();
-    }
     fn update_game_call(&mut self) {
         let mut encoder =
             self.env
@@ -527,7 +386,7 @@ impl State {
                     label: Some("Encoder"),
                 });
         self.env.queue.write_buffer(
-            &self.atomic_counter_buffer,
+            &self.compute_env.atomic_counter_buffer,
             0,
             bytemuck::bytes_of(&0u32),
         );
@@ -536,10 +395,10 @@ impl State {
                 encoder.begin_compute_pass(&ComputePassDescriptor {
                     label: Some("Compute Pass"),
                 });
-            compute_pass.set_pipeline(&self.compute_pipeline);
+            compute_pass.set_pipeline(&self.compute_env.compute_pipeline);
             compute_pass.set_bind_group(
                 0,
-                &self.compute_bind_groups[self.step_toggle],
+                &self.compute_env.bind_groups[self.compute_env.step_toggle],
                 &[],
             );
             compute_pass.dispatch_workgroups(
@@ -555,7 +414,7 @@ impl State {
             mapped_at_creation: false,
         });
         encoder.copy_buffer_to_buffer(
-            &self.atomic_counter_buffer,
+            &self.compute_env.atomic_counter_buffer,
             0,
             &staging_buffer,
             0,
@@ -571,20 +430,10 @@ impl State {
         rx.receive().block_on().unwrap().unwrap();
         let data = slice.get_mapped_range();
         let res: Vec<u32> = bytemuck::cast_slice(&data).to_vec();
-        self.num_instances = res[0];
-        self.step_toggle = (self.step_toggle + 1) % 2;
+        self.compute_env.num_instances = res[0];
+        self.compute_env.step_toggle = (self.compute_env.step_toggle + 1) % 2;
     }
-    fn update_game_and_render(&mut self) -> Result<(), wgpu::SurfaceError> {
-        self.update_game_call();
 
-        self.render_call();
-
-        Ok(())
-    }
-    fn render_only(&mut self) -> Result<(), wgpu::SurfaceError> {
-        self.render_call();
-        Ok(())
-    }
     fn render_call(&mut self) {
         let output = self.env.surface.get_current_texture().unwrap();
         let mut encoder =
@@ -642,44 +491,11 @@ impl State {
             render_pass.draw_indexed(
                 0..self.model.num_indices,
                 0,
-                0..self.num_instances,
+                0..self.compute_env.num_instances,
             );
         }
 
         self.env.queue.submit(Some(encoder.finish()));
         output.present();
-    }
-    async fn test(&mut self) {
-        let mut encoder =
-            self.env
-                .device
-                .create_command_encoder(&CommandEncoderDescriptor {
-                    label: Some("Encoder"),
-                });
-        let staging_buffer = self.env.device.create_buffer(&BufferDescriptor {
-            label: None,
-            size: std::mem::size_of::<u32>() as BufferAddress,
-            usage: BufferUsages::MAP_READ | BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-        encoder.copy_buffer_to_buffer(
-            &self.atomic_counter_buffer,
-            0,
-            &staging_buffer,
-            0,
-            std::mem::size_of::<u32>() as u64,
-        );
-        self.env.queue.submit(Some(encoder.finish()));
-
-        let slice = staging_buffer.slice(..);
-        let (tx, rx) = futures_intrusive::channel::shared::oneshot_channel();
-        slice.map_async(wgpu::MapMode::Read, move |result| {
-            tx.send(result).unwrap();
-        });
-        self.env.device.poll(wgpu::Maintain::Wait);
-        rx.receive().await.unwrap().unwrap();
-        let data = slice.get_mapped_range();
-        let res: Vec<u32> = bytemuck::cast_slice(&data).to_vec();
-        println!("Blub{:?}", res);
     }
 }

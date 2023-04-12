@@ -71,7 +71,7 @@ fn main() {
             let res =
                 moving_average.iter().sum::<f32>() / MOVING_AVERAGE_NUM as f32;
             timer = Instant::now();
-            state.update(delta, control_flow);
+            state.update(delta);
             println!("{}", 1. / res);
         }
         Event::DeviceEvent {

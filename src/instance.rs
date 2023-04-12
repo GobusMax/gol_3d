@@ -18,13 +18,13 @@ impl From<(&GameOfLife, &Device)> for InstancesVec {
             .cells
             .indexed_iter()
             .filter_map(|(i, c)| {
-                if *c != 0 {
+                if *c == 0 {
+                    None
+                } else {
                     Some(Instance {
                         position: vec3(i.0 as _, i.1 as _, i.2 as _),
                         state: *c as _,
                     })
-                } else {
-                    None
                 }
             })
             .collect();
