@@ -209,29 +209,32 @@ impl Rule {
     fn von_neumann_neigborhood(
         &self,
         cells: &Array3<u8>,
-        idx: (usize, usize, usize),
+        index: (usize, usize, usize),
     ) -> u8 {
         let dim = cells.dim();
         let mut sum = 0;
 
-        if cells[((idx.0 + 1) % dim.0, idx.1, idx.2)] == self.max_state {
+        if cells[((index.0 + 1) % dim.0, index.1, index.2)] == self.max_state {
             sum += 1;
         }
-        if cells[(idx.0, (idx.1 + 1) % dim.1, idx.2)] == self.max_state {
+        if cells[(index.0, (index.1 + 1) % dim.1, index.2)] == self.max_state {
             sum += 1;
         }
-        if cells[(idx.0, idx.1, (idx.2 + 1) % dim.2)] == self.max_state {
+        if cells[(index.0, index.1, (index.2 + 1) % dim.2)] == self.max_state {
             sum += 1;
         }
-        if cells[((idx.0 + dim.0 - 1) % dim.0, idx.1, idx.2)] == self.max_state
+        if cells[((index.0 + dim.0 - 1) % dim.0, index.1, index.2)]
+            == self.max_state
         {
             sum += 1;
         }
-        if cells[(idx.0, (idx.1 + dim.1 - 1) % dim.1, idx.2)] == self.max_state
+        if cells[(index.0, (index.1 + dim.1 - 1) % dim.1, index.2)]
+            == self.max_state
         {
             sum += 1;
         }
-        if cells[(idx.0, idx.1, (idx.2 + dim.2 - 1) % dim.2)] == self.max_state
+        if cells[(index.0, index.1, (index.2 + dim.2 - 1) % dim.2)]
+            == self.max_state
         {
             sum += 1;
         }
