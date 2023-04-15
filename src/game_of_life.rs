@@ -2,7 +2,7 @@ use crate::{rule::Rule, Init};
 use ndarray::Array3;
 use ndarray_rand::RandomExt;
 
-pub const SIZE: usize = 200;
+pub const SIZE: usize = 100;
 pub struct GameOfLife {
     pub cells: Array3<u8>,
     pub rule: Rule,

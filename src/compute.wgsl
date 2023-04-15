@@ -1,6 +1,6 @@
 //TODO
-const SIZE = 200u;
-const SIZEI32 = 200;
+const SIZE = 100u;
+const SIZEI32 = 100;
 
 struct Instance {
     @location(5) pos: vec3<f32>,
