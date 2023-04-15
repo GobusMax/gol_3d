@@ -319,6 +319,20 @@ impl State {
                 return true;
             }
             WindowEvent::KeyboardInput { input, .. }
+                if input.virtual_keycode == Some(VirtualKeyCode::B)
+                    && input.state == ElementState::Released =>
+            {
+                self.gol.rule = "1-8,11-12,17-31/12/2/M/100/1".parse().unwrap();
+                self.gol.cells = GameOfLife::gol_2d_board(
+                    SIZE,
+                    SIZE,
+                    1.,
+                    self.gol.rule.max_state,
+                );
+                self.update_cells_buffers();
+                return true;
+            }
+            WindowEvent::KeyboardInput { input, .. }
                 if input.virtual_keycode == Some(VirtualKeyCode::Q)
                     && input.state == ElementState::Released =>
             {

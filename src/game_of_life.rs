@@ -33,6 +33,33 @@ impl GameOfLife {
         cells
     }
 
+    pub fn gol_2d_board(
+        size: usize,
+        partial_size: usize,
+        prob: f64,
+        max_state: u8,
+    ) -> Array3<u8> {
+        let mut cells = Array3::<u8>::zeros((size, size, size));
+        cells
+            .slice_mut(ndarray::s![
+                ((size - partial_size) / 2)..((size + partial_size) / 2),
+                9..11,
+                ((size - partial_size) / 2)..((size + partial_size) / 2),
+            ])
+            .assign(
+                &Array3::<bool>::random(
+                    (partial_size, 1, partial_size),
+                    ndarray_rand::rand_distr::Bernoulli::new(prob).unwrap(),
+                )
+                .map(|v| u8::from(*v) * max_state),
+            );
+        cells[((size) / 2, 11, (size) / 2)] = max_state;
+        cells[((size) / 2 + 1, 11, (size) / 2)] = max_state;
+        cells[((size) / 2 + 2, 11, (size) / 2)] = max_state;
+        cells[((size) / 2 + 2, 11, (size) / 2 + 1)] = max_state;
+        cells[((size) / 2 + 1, 11, (size) / 2 + 2)] = max_state;
+        cells
+    }
     pub fn cells_random_init(max_state: u8, init: &Init) -> Array3<u8> {
         Self::cells_random(SIZE, init.size, init.density, max_state)
     }
