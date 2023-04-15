@@ -41,11 +41,11 @@ cargo run --release -- --help
 ### Grammar
 
 ```ebnf
-Rule ::= SurviveMask "/" BornMask "/" MaxState "/" Neighborhood [ "/" InitSize]  [ "/" InitDensity ]
+Rule ::= SurviveMask "/" BornMask "/" NumStates "/" Neighborhood [ "/" InitSize]  [ "/" InitDensity ]
 
 SurviveMask   ::= Mask
 BornMask      ::= Mask
-MaxState      ::= Integer
+NumStates      ::= Integer
 Neighborhood  ::= "M" | "MN" | "N" | "NN"
 InitSize      ::= Integer
 InitDensity   ::= Float
