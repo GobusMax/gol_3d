@@ -33,15 +33,15 @@ fn bitmask(input: &str) -> IResult<&str, u32> {
                             tag("-"),
                             character::complete::u8,
                         ),
-                        |(l, r)| ((1 << l) - 1) ^ (((1u64 << (r + 1)) - 1) as u32),
+                        |(l, r)| {
+                            ((1 << l) - 1) ^ (((1u64 << (r + 1)) - 1) as u32)
+                        },
                     ),
                     // Single bit
                     map(character::complete::u8, |n| 1 << n),
                 )),
             ),
-            |l| {
-                l.into_iter().fold(0, |acc, m| acc | m)
-            },
+            |l| l.into_iter().fold(0, |acc, m| acc | m),
         ),
     ))(input)
 }
