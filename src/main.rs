@@ -26,12 +26,6 @@ fn main() {
         .env
         .window
         .set_title(&format!("Rule: {}", state.gol.rule));
-    state
-        .env
-        .window
-        .set_cursor_grab(winit::window::CursorGrabMode::Confined)
-        .unwrap();
-    state.env.window.set_cursor_visible(false);
 
     event_loop.run(move |event, _, control_flow| match event {
         Event::WindowEvent {
@@ -68,11 +62,12 @@ fn main() {
             let delta = timer.elapsed().as_secs_f32();
             moving_average.pop_front();
             moving_average.push_back(delta);
-            let res =
+            let _res =
                 moving_average.iter().sum::<f32>() / MOVING_AVERAGE_NUM as f32;
             timer = Instant::now();
             state.update(delta);
-            // println!("{}", 1. / res);
+            // println!("{}", 1. / _res);
+            // println!("{}", state.gol.rule)
         }
         Event::DeviceEvent {
             device_id: _,

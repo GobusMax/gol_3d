@@ -130,7 +130,7 @@ impl State {
             render_pipeline,
             gol,
             paused: true,
-            cursor_grab: true,
+            cursor_grab: false,
             compute_env,
         }
     }
@@ -385,10 +385,10 @@ impl State {
                 .create_command_encoder(&CommandEncoderDescriptor {
                     label: Some("Encoder"),
                 });
-        self.env.queue.write_buffer(
+        encoder.clear_buffer(
             &self.compute_env.atomic_counter_buffer,
             0,
-            bytemuck::bytes_of(&0u32),
+            std::num::NonZeroU64::new(std::mem::size_of::<u32>() as u64),
         );
         {
             let mut compute_pass =
