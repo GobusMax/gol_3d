@@ -45,7 +45,7 @@ Rule ::= SurviveMask "/" BornMask "/" NumStates "/" Neighborhood [ "/" InitSize]
 
 SurviveMask   ::= Mask
 BornMask      ::= Mask
-NumStates      ::= Integer
+NumStates     ::= Integer
 Neighborhood  ::= "M" | "MN" | "N" | "NN"
 InitSize      ::= Integer
 InitDensity   ::= Float
