@@ -5,9 +5,6 @@ edition = "2021"
 authors = ["GobusMax", "Garbaz"]
 description = "A 3D Game Of Life. Rendered with wgpu."
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-
 [dependencies]
 wgpu = "0.16"
 env_logger = "0.10"
@@ -25,8 +22,8 @@ futures-intrusive = "0.5.0"
 instant = { version = "0.1.12", features = ["wasm-bindgen"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-wgpu = {version = "0.15", features = ["webgl"]}
-getrandom = { version = "0.2.10", features = ["js"] }
+wgpu = { version = "*", features = ["webgl"] }
+getrandom = { version = "*", features = ["js"] }
 wasm-bindgen-futures = "0.4.36"
 console_log = "1.0.0"
 console_error_panic_hook = "0.1.7"
