@@ -16,11 +16,17 @@ pub struct Environment {
 impl Environment {
     pub async fn new(window: Window) -> Self {
         let size = window.inner_size();
+
+        #[cfg(not(target_arch = "wasm32"))]
         let instance = wgpu::Instance::new(InstanceDescriptor {
             backends: Backends::VULKAN,
             ..Default::default()
         });
-        let surface = unsafe { instance.create_surface(&window).unwrap() };
+
+        #[cfg(target_arch = "wasm32")]
+        let instance = wgpu::Instance::default();
+
+        let surface = unsafe { instance.create_surface(&window) }.unwrap();
 
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptionsBase {
@@ -31,6 +37,7 @@ impl Environment {
             .await
             .unwrap();
 
+        #[cfg(not(target_arch = "wasm32"))]
         let (device, queue) = adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
@@ -42,7 +49,21 @@ impl Environment {
             )
             .await
             .unwrap();
-        // println!("Features: {:?}\n", adapter.limits());
+
+        #[cfg(target_arch = "wasm32")]
+        let (device, queue) = adapter
+            .request_device(
+                &wgpu::DeviceDescriptor {
+                    label: None,
+                    features: wgpu::Features::empty(),
+                    // Make sure we use the texture resolution limits from the adapter, so we can support images the size of the swapchain.
+                    limits: wgpu::Limits::downlevel_webgl2_defaults()
+                        .using_resolution(adapter.limits()),
+                },
+                None,
+            )
+            .await
+            .expect("Failed to create device");
 
         let surface_caps = surface.get_capabilities(&adapter);
 

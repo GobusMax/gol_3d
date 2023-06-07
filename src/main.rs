@@ -1,25 +1,20 @@
 use gol_3d::State;
 
-use std::{collections::VecDeque, time::Instant};
+use std::collections::VecDeque;
+
+use instant::Instant;
 
 use winit::{
     event::{ElementState, Event, VirtualKeyCode, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
-    window::WindowBuilder,
+    window::{WindowBuilder, Window},
 };
 
 const MOVING_AVERAGE_NUM: usize = 10;
-fn main() {
+
+async fn run(event_loop: EventLoop<()>, window: Window) {
     let mut timer = Instant::now();
     let mut moving_average = VecDeque::from([0.; MOVING_AVERAGE_NUM]);
-
-    env_logger::init();
-    let event_loop = EventLoop::new();
-
-    let window = WindowBuilder::new()
-        .with_inner_size(winit::dpi::PhysicalSize::new(900, 900))
-        .build(&event_loop)
-        .unwrap();
 
     let mut state = State::new(window);
     state
@@ -77,4 +72,39 @@ fn main() {
         }
         _ => {}
     });
+}
+
+fn main() {
+    let event_loop = EventLoop::new();
+
+    #[cfg(not(target_arch = "wasm32"))]
+    let window = WindowBuilder::new()
+        .with_inner_size(winit::dpi::PhysicalSize::new(900, 900))
+        .build(&event_loop)
+        .unwrap();
+
+    #[cfg(target_arch = "wasm32")]
+    let window = winit::window::Window::new(&event_loop).unwrap();
+
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        env_logger::init();
+        pollster::block_on(run(event_loop, window));
+    }
+    #[cfg(target_arch = "wasm32")]
+    {
+        std::panic::set_hook(Box::new(console_error_panic_hook::hook));
+        console_log::init().expect("could not initialize logger");
+        use winit::platform::web::WindowExtWebSys;
+        // On wasm, append the canvas to the document body
+        web_sys::window()
+            .and_then(|win| win.document())
+            .and_then(|doc| doc.body())
+            .and_then(|body| {
+                body.append_child(&web_sys::Element::from(window.canvas()))
+                    .ok()
+            })
+            .expect("couldn't append canvas to document body");
+        wasm_bindgen_futures::spawn_local(run(event_loop, window));
+    }
 }
