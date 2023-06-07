@@ -7,7 +7,7 @@ use instant::Instant;
 use winit::{
     event::{ElementState, Event, VirtualKeyCode, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
-    window::{WindowBuilder, Window},
+    window::{Window, WindowBuilder},
 };
 
 const MOVING_AVERAGE_NUM: usize = 10;
@@ -77,20 +77,21 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
 fn main() {
     let event_loop = EventLoop::new();
 
-    #[cfg(not(target_arch = "wasm32"))]
+    // #[cfg(not(target_arch = "wasm32"))]
     let window = WindowBuilder::new()
         .with_inner_size(winit::dpi::PhysicalSize::new(900, 900))
         .build(&event_loop)
         .unwrap();
 
-    #[cfg(target_arch = "wasm32")]
-    let window = winit::window::Window::new(&event_loop).unwrap();
+    // #[cfg(target_arch = "wasm32")]
+    // let window = Window::new(&event_loop).unwrap();
 
     #[cfg(not(target_arch = "wasm32"))]
     {
         env_logger::init();
         pollster::block_on(run(event_loop, window));
     }
+
     #[cfg(target_arch = "wasm32")]
     {
         std::panic::set_hook(Box::new(console_error_panic_hook::hook));
