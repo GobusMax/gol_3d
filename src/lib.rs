@@ -58,8 +58,10 @@ pub struct State {
     compute_env: ComputeEnv,
 }
 impl State {
-    pub fn new(window: Window) -> Self {
+    pub async fn new(window: Window) -> Self {
         //* GOL
+
+        // log::log!(log::Level::Info, "x1");
 
         let args = args::Args::parse();
 
@@ -77,6 +79,8 @@ impl State {
             rule_parse::rule_and_init(&rule_string).unwrap().1
         };
 
+        // log::log!(log::Level::Info, "x2");
+
         if let Some(s) = args.init_size {
             init.size = s;
         }
@@ -89,16 +93,23 @@ impl State {
             rule,
             init,
         };
+
+        // log::log!(log::Level::Info, "x3");
+
         //* ENVIRONMENT
-        let env = Environment::new(window).block_on();
+        let env = Environment::new(window).await;
 
         //* CAMERA
         let (camera, camera_bind_group_layout) =
             Camera::create_camera(&env.device, &env.config);
 
+        // log::log!(log::Level::Info, "x4");
+
         //* MODEL
         let model = Model::new(&env.device, model::CUBE, model::CUBE_INDICES);
         let instances = instance::InstancesVec::from((&gol, &env.device));
+
+        // log::log!(log::Level::Info, "x5");
 
         //* RENDERING
         let depth_texture =
@@ -119,7 +130,11 @@ impl State {
             &draw_shader,
         );
 
+        // log::log!(log::Level::Info, "x6");
+
         let compute_env = ComputeEnv::new(&gol, &env.device, &instances);
+
+        // log::log!(log::Level::Info, "x7");
 
         Self {
             env,
@@ -385,9 +400,12 @@ impl State {
             );
         }
         if self.paused {
+            // log::log!(log::Level::Info, "z1");
             self.render_call();
         } else {
+            // log::log!(log::Level::Info, "z2");
             self.update_game_call();
+            // log::log!(log::Level::Info, "z3");
             self.render_call();
         }
     }
@@ -440,6 +458,7 @@ impl State {
         slice.map_async(wgpu::MapMode::Read, move |result| {
             tx.send(result).unwrap();
         });
+        
         self.env.device.poll(wgpu::Maintain::Wait);
         rx.receive().block_on().unwrap().unwrap();
         let data = slice.get_mapped_range();
@@ -449,7 +468,9 @@ impl State {
     }
 
     fn render_call(&mut self) {
+        // log::log!(log::Level::Info, "a1");
         let output = self.env.surface.get_current_texture().unwrap();
+        // log::log!(log::Level::Info, "a2");
         let mut encoder =
             self.env
                 .device

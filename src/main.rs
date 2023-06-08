@@ -16,61 +16,76 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
     let mut timer = Instant::now();
     let mut moving_average = VecDeque::from([0.; MOVING_AVERAGE_NUM]);
 
-    let mut state = State::new(window);
+    // log::log!(log::Level::Info, "0");
+
+    let mut state = State::new(window).await;
+    
+    #[cfg(not(target_arch = "wasm32"))]
     state
         .env
         .window
         .set_title(&format!("Rule: {}", state.gol.rule));
 
-    event_loop.run(move |event, _, control_flow| match event {
-        Event::WindowEvent {
-            ref event,
-            window_id,
-        } if window_id == state.env.window.id() => {
-            if !state.input(event) {
-                match event {
-                    WindowEvent::CloseRequested
-                    | WindowEvent::KeyboardInput {
-                        input:
-                            winit::event::KeyboardInput {
-                                state: ElementState::Pressed,
-                                virtual_keycode: Some(VirtualKeyCode::Escape),
-                                ..
-                            },
-                        ..
-                    } => *control_flow = ControlFlow::Exit,
+    // log::log!(log::Level::Info, "1");
 
-                    WindowEvent::Resized(physicalsize) => {
-                        state.resize(*physicalsize);
-                    }
-                    WindowEvent::ScaleFactorChanged {
-                        new_inner_size, ..
-                    } => {
-                        state.resize(**new_inner_size);
-                    }
+    event_loop.run(move |event, _, control_flow| {
+        // log::log!(log::Level::Info, "2");
+        
+        match event {
+            Event::WindowEvent {
+                ref event,
+                window_id,
+            } if window_id == state.env.window.id() => {
+                // log::log!(log::Level::Info, "y1");
+                if !state.input(event) {
+                    match event {
+                        WindowEvent::CloseRequested
+                        | WindowEvent::KeyboardInput {
+                            input:
+                                winit::event::KeyboardInput {
+                                    state: ElementState::Pressed,
+                                    virtual_keycode:
+                                        Some(VirtualKeyCode::Escape),
+                                    ..
+                                },
+                            ..
+                        } => *control_flow = ControlFlow::Exit,
 
-                    _ => {}
+                        WindowEvent::Resized(physicalsize) => {
+                            state.resize(*physicalsize);
+                        }
+                        WindowEvent::ScaleFactorChanged {
+                            new_inner_size,
+                            ..
+                        } => {
+                            state.resize(**new_inner_size);
+                        }
+
+                        _ => {}
+                    }
                 }
             }
+            Event::MainEventsCleared => {
+                // log::log!(log::Level::Info, "y2");
+                let delta = timer.elapsed().as_secs_f32();
+                moving_average.pop_front();
+                moving_average.push_back(delta);
+                let _res = moving_average.iter().sum::<f32>()
+                    / MOVING_AVERAGE_NUM as f32;
+                timer = Instant::now();
+                state.update(delta);
+                // println!("{}", 1. / _res);
+                // println!("{}", state.gol.rule)
+            }
+            Event::DeviceEvent {
+                device_id: _,
+                event,
+            } => {
+                // log::log!(log::Level::Info, "y3");
+                state.camera.controller.process_mouse(&event);
+            }
+            _ => {}
         }
-        Event::MainEventsCleared => {
-            let delta = timer.elapsed().as_secs_f32();
-            moving_average.pop_front();
-            moving_average.push_back(delta);
-            let _res =
-                moving_average.iter().sum::<f32>() / MOVING_AVERAGE_NUM as f32;
-            timer = Instant::now();
-            state.update(delta);
-            // println!("{}", 1. / _res);
-            // println!("{}", state.gol.rule)
-        }
-        Event::DeviceEvent {
-            device_id: _,
-            event,
-        } => {
-            state.camera.controller.process_mouse(&event);
-        }
-        _ => {}
     });
 }
 
@@ -97,7 +112,6 @@ fn main() {
         std::panic::set_hook(Box::new(console_error_panic_hook::hook));
         console_log::init().expect("could not initialize logger");
         use winit::platform::web::WindowExtWebSys;
-        // On wasm, append the canvas to the document body
         web_sys::window()
             .and_then(|win| win.document())
             .and_then(|doc| doc.body())

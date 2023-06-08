@@ -37,7 +37,7 @@ impl Environment {
             .await
             .unwrap();
 
-        #[cfg(not(target_arch = "wasm32"))]
+        // #[cfg(not(target_arch = "wasm32"))]
         let (device, queue) = adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
@@ -50,19 +50,19 @@ impl Environment {
             .await
             .unwrap();
 
-        #[cfg(target_arch = "wasm32")]
-        let (device, queue) = adapter
-            .request_device(
-                &wgpu::DeviceDescriptor {
-                    label: None,
-                    features: Features::empty(),
-                    limits: Limits::downlevel_webgl2_defaults()
-                        .using_resolution(adapter.limits()),
-                },
-                None,
-            )
-            .await
-            .expect("Failed to create device");
+        // #[cfg(target_arch = "wasm32")]
+        // let (device, queue) = adapter
+        //     .request_device(
+        //         &wgpu::DeviceDescriptor {
+        //             label: None,
+        //             features: Features::empty(),
+        //             limits: Limits::downlevel_webgl2_defaults()
+        //                 .using_resolution(adapter.limits()),
+        //         },
+        //         None,
+        //     )
+        //     .await
+        //     .expect("Failed to create device");
 
         let surface_caps = surface.get_capabilities(&adapter);
 
@@ -81,6 +81,8 @@ impl Environment {
             alpha_mode: surface_caps.alpha_modes[0],
             view_formats: vec![],
         };
+
+        surface.configure(&device, &config);
 
         Self {
             surface,
