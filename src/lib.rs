@@ -390,7 +390,7 @@ impl State {
         self.camera.controller.process_events(event)
     }
 
-    pub fn update(&mut self, delta: f32) {
+    pub async fn update(&mut self, delta: f32) {
         if self.cursor_grab {
             self.camera.update(delta);
             self.env.queue.write_buffer(
@@ -404,24 +404,26 @@ impl State {
             self.render_call();
         } else {
             // log::log!(log::Level::Info, "z2");
-            self.update_game_call();
+            self.update_game_call().await;
             // log::log!(log::Level::Info, "z3");
             self.render_call();
         }
     }
 
-    fn update_game_call(&mut self) {
+    async fn update_game_call(&mut self) {
         let mut encoder =
             self.env
                 .device
                 .create_command_encoder(&CommandEncoderDescriptor {
                     label: Some("Encoder"),
                 });
-        encoder.clear_buffer(
-            &self.compute_env.atomic_counter_buffer,
-            0,
-            std::num::NonZeroU64::new(std::mem::size_of::<u32>() as u64),
-        );
+        log::log!(log::Level::Info, "1");
+        // encoder.clear_buffer(
+        //     &self.compute_env.atomic_counter_buffer,
+        //     0,
+        //     std::num::NonZeroU64::new(std::mem::size_of::<u32>() as u64),
+        // );
+        log::log!(log::Level::Info, "2");
         {
             let mut compute_pass =
                 encoder.begin_compute_pass(&ComputePassDescriptor {
@@ -460,7 +462,7 @@ impl State {
         });
         
         self.env.device.poll(wgpu::Maintain::Wait);
-        rx.receive().block_on().unwrap().unwrap();
+        rx.receive().await.unwrap().unwrap();
         let data = slice.get_mapped_range();
         let res: Vec<u32> = bytemuck::cast_slice(&data).to_vec();
         self.compute_env.num_instances = res[0];

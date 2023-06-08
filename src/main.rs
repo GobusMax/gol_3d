@@ -1,3 +1,5 @@
+#![feature(async_closure)]
+
 use gol_3d::State;
 
 use std::collections::VecDeque;
@@ -19,7 +21,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
     // log::log!(log::Level::Info, "0");
 
     let mut state = State::new(window).await;
-    
+
     #[cfg(not(target_arch = "wasm32"))]
     state
         .env
@@ -28,9 +30,9 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
 
     // log::log!(log::Level::Info, "1");
 
-    event_loop.run(move |event, _, control_flow| {
+    let f = async move |event: Event<()>, _, control_flow: &mut ControlFlow| {
         // log::log!(log::Level::Info, "2");
-        
+
         match event {
             Event::WindowEvent {
                 ref event,
@@ -73,7 +75,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                 let _res = moving_average.iter().sum::<f32>()
                     / MOVING_AVERAGE_NUM as f32;
                 timer = Instant::now();
-                state.update(delta);
+                state.update(delta).await;
                 // println!("{}", 1. / _res);
                 // println!("{}", state.gol.rule)
             }
@@ -86,7 +88,9 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
             }
             _ => {}
         }
-    });
+    };
+
+    event_loop.run(f);
 }
 
 fn main() {

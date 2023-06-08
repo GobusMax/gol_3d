@@ -1325,11 +1325,11 @@ function __wbg_get_imports() {
         const ret = makeMutClosure(arg0, arg1, 354, __wbg_adapter_54);
         return addHeapObject(ret);
     };
-    imports.wbg.__wbindgen_closure_wrapper5311 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper5310 = function(arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 604, __wbg_adapter_57);
         return addHeapObject(ret);
     };
-    imports.wbg.__wbindgen_closure_wrapper5980 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper5979 = function(arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 629, __wbg_adapter_60);
         return addHeapObject(ret);
     };
