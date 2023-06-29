@@ -1,13 +1,11 @@
 use wgpu::{
-    AddressMode, CompareFunction, Device, Extent3d, FilterMode, Sampler,
-    SamplerDescriptor, SurfaceConfiguration, TextureDescriptor,
+    Device, Extent3d, SurfaceConfiguration, TextureDescriptor,
     TextureDimension, TextureFormat, TextureUsages, TextureView,
     TextureViewDescriptor,
 };
 pub struct Texture {
     pub texture: wgpu::Texture,
     pub view: TextureView,
-    pub sampler: Sampler,
 }
 
 impl Texture {
@@ -34,23 +32,6 @@ impl Texture {
             view_formats: &[],
         });
         let view = texture.create_view(&TextureViewDescriptor::default());
-        let sampler = device.create_sampler(&SamplerDescriptor {
-            address_mode_u: AddressMode::ClampToEdge,
-            address_mode_v: AddressMode::ClampToEdge,
-            address_mode_w: AddressMode::ClampToEdge,
-            mag_filter: FilterMode::Linear,
-            min_filter: FilterMode::Linear,
-            mipmap_filter: FilterMode::Nearest,
-            lod_min_clamp: 0.0,
-            lod_max_clamp: 100.,
-            compare: Some(CompareFunction::LessEqual),
-            ..Default::default()
-        });
-
-        Self {
-            texture,
-            view,
-            sampler,
-        }
+        Self { texture, view }
     }
 }

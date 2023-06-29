@@ -66,6 +66,7 @@ fn main() {
                 moving_average.iter().sum::<f32>() / MOVING_AVERAGE_NUM as f32;
             timer = Instant::now();
             state.update(delta);
+            println!("{}", 1. / delta)
             // println!("{}", 1. / _res);
             // println!("{}", state.gol.rule)
         }
